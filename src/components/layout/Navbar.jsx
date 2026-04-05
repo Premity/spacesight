@@ -1,7 +1,10 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useContext } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { AppContext } from '../../context/AppContext';
 
 export default function Navbar() {
+  const location = useLocation();
+  const { clearResults } = useContext(AppContext);
   return (
     <nav className="fixed top-0 w-full z-50 bg-space-bg/70 backdrop-blur-md border-b border-white/5 px-6 py-4 flex justify-between items-center transition-all duration-300">
       <Link to="/" className="flex items-center gap-2 text-white hover:text-space-purple transition-colors">
@@ -15,9 +18,15 @@ export default function Navbar() {
         <span className="font-orbitron font-bold text-xl tracking-wider">SpaceSight</span>
       </Link>
       <div className="flex items-center gap-8">
-        <Link to="/analyze" className="px-6 py-2 rounded-full font-orbitron font-medium text-sm text-white bg-space-purple hover:bg-space-violet transition-all duration-300 shadow-[0_0_15px_rgba(124,58,237,0.5)] hover:shadow-[0_0_25px_rgba(168,85,247,0.7)] flex items-center gap-2">
-          Launch Analysis
-        </Link>
+        {location.pathname === '/results' && (
+          <Link 
+            to="/analyze" 
+            onClick={clearResults}
+            className="px-6 py-2 rounded-full font-orbitron font-medium text-sm text-white bg-space-purple hover:bg-space-violet transition-all duration-300 shadow-[0_0_15px_rgba(124,58,237,0.5)] hover:shadow-[0_0_25px_rgba(168,85,247,0.7)] flex items-center gap-2"
+          >
+            New Analysis &rarr;
+          </Link>
+        )}
       </div>
     </nav>
   );

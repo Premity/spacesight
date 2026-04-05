@@ -1,61 +1,65 @@
 # API Requirements Specification
 
 ## 1. Overview
-This document outlines the behavior and interface schemas for the upcoming backend server in the SpaceSight project. It defines exactly what is expected from the API for the pipeline process.
+This document specifies the interaction flows between the frontend and the Python FastAPI backend engine for SpaceSight.
 
-## 2. Endpoints
+## 2. Global API Constraints
+- **CORS:** Must allow cross-origin requests from the GitHub Pages frontend deployment origin.
+- **Content-Type:** All JSON endpoints return `application/json`.
+- **Error Handling:** All error responses use JSON format: `{ "error": "Diagnostic message string", "code": HTTP_STATUS_CODE }`
+- **Framework:** Python FastAPI.
 
-### 2.1 Initialize Analysis
-- **URL:** `POST /api/analyze`
-- **Behavior:** Accepts the Kepler light curve file, securely stores it in a managed job queue, and provisions an execution ID for the user to poll.
-- **Request Format:** `multipart/form-data` with property `file` (.npz / .zip limits configured).
+## 3. Endpoints
+
+### 3.1 Initialize Analysis
+- **URL:** `POST /analyze`
+- **Behavior:** Accepts multipart Form-data `.npz` or `.zip` files containing Kepler light curves. Immediately begins background async pipeline processing.
+- **Request:** `multipart/form-data` -> `file`
+- **Response Format:**
+  ```json
+  { "jobId": "uuid-v4-string" }
+  ```
+
+### 3.2 Poll Pipeline Status
+- **URL:** `GET /status/{jobId}`
+- **Behavior:** Returns current sequence of the async job. Returns percentage progress and a strict enum of stage identification keys.
 - **Response Format:**
   ```json
   {
-    "jobId": "uuid-v4-string",
-    "status": "accepted"
-  }
-  ```
-
-### 2.2 Get Pipeline Status / Results
-- **URL:** `GET /api/status/:jobId`
-- **Behavior:** Lookups the active job and reports the current stage within the pipeline sequence. If the job is complete, it immediately serves the final analysis output.
-- **Response Format (In-Progress):**
-  ```json
-  {
-    "jobId": "uuid-v4-string",
-    "status": "processing",
+    "stage": "preprocessing", // Enum: 'start', 'loading', 'preprocessing', 'filtering', 'normalization', 'cnn_inference', 'bls_analysis', 'generate_visualizations', 'done'
     "stageIndex": 3,
-    "stageName": "Preprocessing",
-    "results": null
-  }
-  ```
-- **Response Format (Done):**
-  ```json
-  {
-    "jobId": "uuid-v4-string",
-    "status": "done",
-    "stageIndex": 8,
-    "stageName": "Done",
-    "results": {
-       "planetFound": true,
-       "confidenceScore": 0.94,
-       "orbitalPeriodDays": 12.5,
-       "planetRadiusEarths": 2.1,
-       "transitDepth": 0.005,
-       "visualizations": {
-          "phaseFoldedCurve": "url-to-image"
-       }
-    }
+    "progress": 35, // 0-100%
+    "done": false
   }
   ```
 
-## 3. Defined Pipeline Stages (for `stageIndex`)
-1. **Start**: Job created and added to queue.
-2. **Loading**: Reading `.npz` file into numpy array memory layouts.
-3. **Preprocessing**: Segmenting 1D flux timeline.
-4. **Filtering**: Rejecting outlier metrics and solar flares.
-5. **Normalization**: Min-Max scaling for inference.
-6. **CNN Inference**: PyTorch model forward pass.
-7. **BLS Analysis**: Extracting physical parameters.
-8. **Done**: Serializing and serving payloads.
+### 3.3 Get Analysis Results
+- **URL:** `GET /results/{jobId}`
+- **Behavior:** Fetches the completed `single` or `multi` nested JSON tree describing all planet candidates, their BLS and orbital structures, and raw flux outputs across targets.
+- **Response Shape Schema:**
+  ```json
+  {
+    "type": "single" | "multi",
+    "stars": [
+      {
+        "id": "Target-String-UUID",
+        "name": "KIC 757450",
+        "planets": [
+           {
+              "id": "Planet-String",
+              "orbitalPeriod": 12.5,
+              "transitDepth": 0.45,
+              "estimatedRadius": 2.1,
+              "confidence": "High"
+           }
+        ],
+        "noPlanetConfidence": 73, // Only when planets == 0
+        "lightCurve": [{"time": 0, "flux": 1.0}, ...],
+        "blsPeriodogram": [{"period": 0, "power": 1.0}, ...],
+        "orbitalParams": {},
+        "observationSpan": 1459,
+        "dataPoints": 65000
+      }
+    ]
+  }
+  ```
