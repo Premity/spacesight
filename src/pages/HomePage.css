@@ -1,0 +1,26 @@
+.stepper-item {
+  opacity: 0;
+  animation: fadeSlideUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.visible-text {
+  opacity: 1;
+  transition: opacity 150ms ease-in;
+}
+
+.hidden-text {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 100ms ease-out;
+}
