@@ -39,9 +39,10 @@ export default function ResultsPage() {
   return (
     <div className="min-h-screen pt-32 pb-32 px-6 flex flex-col items-center relative z-10 w-full text-space-text font-inter overflow-x-hidden">
       <div className="max-w-7xl w-full flex flex-col gap-12">
-        <section id="results-header">
-          <ResultsHeader results={results} />
-        </section>
+        <div id="results-export-target" className="flex flex-col gap-12 w-full pt-4 rounded-xl">
+          <section id="results-header">
+            <ResultsHeader results={results} />
+          </section>
 
         <section id="planet-table">
           <h2 className="font-orbitron text-2xl font-bold text-white mb-6 border-b border-white/10 pb-4">Planet Candidates Directory</h2>
@@ -75,6 +76,7 @@ export default function ResultsPage() {
 
           <StarDetailPanel star={results.stars.find(s => s.name === selectedStar)} />
         </section>
+        </div>
       </div>
     </div>
   );

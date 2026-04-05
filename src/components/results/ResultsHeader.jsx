@@ -1,4 +1,5 @@
 import React from 'react';
+import ExportButton from './ExportButton';
 
 export default function ResultsHeader({ results }) {
   return (
@@ -12,9 +13,7 @@ export default function ResultsHeader({ results }) {
             {results.type === 'multi' ? `${results.totalStars} Targets Surveyed` : 'Single Target Analysis'}
           </p>
         </div>
-        <button className="px-6 py-2.5 rounded-full font-orbitron font-medium text-sm text-white bg-space-purple/10 border border-space-purple hover:bg-space-purple/80 hover:shadow-[0_0_25px_rgba(124,58,237,0.6)] transition-all duration-300">
-          Export Results &darr;
-        </button>
+        <ExportButton results={results} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
