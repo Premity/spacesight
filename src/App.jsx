@@ -1,16 +1,18 @@
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import HomePage from './pages/HomePage';
-import RunPage from './pages/RunPage';
+import AnalyzePage from './pages/AnalyzePage';
 import ResultsPage from './pages/ResultsPage';
 import { AppProvider } from './context/AppContext';
+import StarField from './components/ui/StarField';
 
 function App() {
   return (
     <AppProvider>
+      <StarField />
       <HashRouter>
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/run" element={<RunPage />} />
+          <Route path="/analyze" element={<AnalyzePage />} />
           <Route path="/results" element={<ResultsPage />} />
         </Routes>
       </HashRouter>
