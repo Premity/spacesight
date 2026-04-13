@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+python-multipart
+numpy
+pandas
+torch
+astropy
+lightkurve
+astropy
+timeseries 
