@@ -78,7 +78,7 @@ catalog_df = pd.read_csv(CATALOG_PATH)
 # -------------------------------
 # BACKGROUND PIPELINE
 # -------------------------------
-def run_pipeline(job_id, file_path):
+def run_pipeline(job_id, file_path, star_name="Unknown Star"):
     try:
         jobs[job_id]["stage"] = "loading"
         jobs[job_id]["progress"] = 10
@@ -88,6 +88,11 @@ def run_pipeline(job_id, file_path):
         with np.load(file_path, allow_pickle=True) as data:
             raw_time = data["time"].copy()
             raw_flux = data["flux"].copy()
+
+        # Extract numeric KIC ID from star name for catalog lookup
+        import re
+        kic_match = re.search(r'\d+', star_name)
+        kic_id = kic_match.group(0) if kic_match else star_name
 
         processor = ExoplanetProcessor(
             model,
@@ -103,7 +108,7 @@ def run_pipeline(job_id, file_path):
             print(f"[{job_id}] Progress: {stage} - {pct}%")
 
         result = processor.analyze_raw_lightcurve(
-            "uploaded_star",
+            kic_id,
             raw_time,
             raw_flux,
             progress_callback=progress_cb
@@ -114,16 +119,15 @@ def run_pipeline(job_id, file_path):
         # -------------------------------
         planets = []
         for i, p in enumerate(result.get("detections", [])):
-            # Determine planet ID: use catalog match if available
-            planet_id = f"Planet-{i+1}"  # fallback
-            # Attempt to retrieve matched KOI ID from processor result if present
+            planet_letter = chr(ord('b') + i)  # b, c, d, ...
+            planet_id = f"{star_name} {planet_letter}"
             if "catalog_match" in p:
                 planet_id = p["catalog_match"].get("id", planet_id)
             planets.append({
                 "id": planet_id,
                 "orbitalPeriod": round(p["calculated"]["period"], 2),
                 "transitDepth": round(p["calculated"]["bls_power"], 4),
-                "estimatedRadius": p["calculated"]["radius"],
+                "estimatedRadius": round(p["calculated"]["radius"], 2),
                 "confidence": "High" if p["calculated"]["bls_power"] > 10 else "Low"
             })
 
@@ -194,7 +198,7 @@ def run_pipeline(job_id, file_path):
             "stars": [
                 {
                     "id": job_id,
-                    "name": result.get("kic_id", "Unknown Star"),
+                    "name": star_name,
                     "planets": planets,
                     "noPlanetConfidence": 0 if planets else 80,
                     "lightCurve": lightCurve,
@@ -235,6 +239,10 @@ async def analyze(file: UploadFile = File(...)):
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
+    # Derive KIC name from filename: "KIC_757450.npz" → "KIC 757450"
+    raw_stem = os.path.splitext(file.filename or "")[0]
+    star_name = raw_stem.replace("_", " ").strip() or "Unknown Star"
+
     jobs[job_id] = {
         "stage": "start",
         "progress": 0,
@@ -244,7 +252,7 @@ async def analyze(file: UploadFile = File(...)):
 
     # Run in background thread
     import threading
-    thread = threading.Thread(target=run_pipeline, args=(job_id, file_path))
+    thread = threading.Thread(target=run_pipeline, args=(job_id, file_path, star_name))
     thread.start()
 
     return {"jobId": job_id}

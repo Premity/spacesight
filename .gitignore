@@ -13,3 +13,4 @@ build/
 *.npz
 *.zip
 temp_*
+CLAUDE.md

@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import InfoTooltip from '../ui/InfoTooltip';
 
 export default function PlanetCandidatesTable({ results, onRowClick }) {
   const [sortConfig, setSortConfig] = useState({ key: 'confidence', direction: 'desc' });
@@ -63,12 +64,26 @@ export default function PlanetCandidatesTable({ results, onRowClick }) {
         <table className="w-full text-left border-collapse whitespace-nowrap min-w-[800px]">
           <thead>
             <tr className="bg-space-purple/20 border-b border-space-purple/30 text-space-text/80 text-sm font-semibold tracking-wider uppercase">
-              <th className="p-5 cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('starName')}>Target Star {sortConfig.key === 'starName' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
-              <th className="p-5">Planet ID</th>
-              <th className="p-5">Orbital Period</th>
-              <th className="p-5">Transit Depth</th>
-              <th className="p-5">Est. Radius</th>
-              <th className="p-5 cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('confidence')}>Confidence {sortConfig.key === 'confidence' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
+              <th className="p-5 cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('starName')}>
+                <InfoTooltip text="The host star's KIC identifier — the Kepler Input Catalog number assigned to this target.">Target Star</InfoTooltip>
+                {' '}{sortConfig.key === 'starName' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}
+              </th>
+              <th className="p-5">
+                <InfoTooltip text="Designation for each planet candidate, following the convention: star name followed by a lowercase letter (b, c, d, ...) in order of detection.">Planet ID</InfoTooltip>
+              </th>
+              <th className="p-5">
+                <InfoTooltip text="Time in days for the planet to complete one full orbit around its host star.">Orbital Period</InfoTooltip>
+              </th>
+              <th className="p-5">
+                <InfoTooltip text="Box Least Squares signal power — a unitless score for how strongly the periodic transit stands out from noise. Values above 10 are classified as high confidence.">BLS Power</InfoTooltip>
+              </th>
+              <th className="p-5">
+                <InfoTooltip text="Planet radius estimated from transit depth and stellar radius, expressed as a multiple of Earth's radius (1 R⊕ = 6,371 km).">Est. Radius</InfoTooltip>
+              </th>
+              <th className="p-5 cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('confidence')}>
+                <InfoTooltip text="Detection confidence based on BLS power. High = power > 10. Low = power ≤ 10.">Confidence</InfoTooltip>
+                {' '}{sortConfig.key === 'confidence' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}
+              </th>
             </tr>
           </thead>
           <tbody className="font-mono text-sm">
@@ -81,8 +96,8 @@ export default function PlanetCandidatesTable({ results, onRowClick }) {
                 <td className="p-5 font-orbitron group-hover:text-white transition-colors">{candidate.starName}</td>
                 <td className="p-5 text-white">{candidate.id}</td>
                 <td className="p-5">{candidate.orbitalPeriod} d</td>
-                <td className="p-5">{candidate.transitDepth}%</td>
-                <td className="p-5">{candidate.estimatedRadius} R⊕</td>
+                <td className="p-5">{Number(candidate.transitDepth).toFixed(2)}</td>
+                <td className="p-5">{Number(candidate.estimatedRadius).toFixed(2)} R⊕</td>
                 <td className="p-5">{getConfidenceBadge(candidate.confidence)}</td>
               </tr>
             ))}
