@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import InfoTooltip from '../ui/InfoTooltip';
 
@@ -94,20 +95,9 @@ export default function StarCharts({ star }) {
                const h = MIN_H + t * (MAX_H - MIN_H);
                const angleDeg = (i * 137.5) % 360;
                const angleRad = (angleDeg * Math.PI) / 180;
-               // Place planet on the ellipse at this angle
                const offsetX = Math.cos(angleRad) * (w / 2);
                const offsetY = Math.sin(angleRad) * (h / 2);
-               return (
-                 <div key={p.id}
-                   className="w-4 h-4 rounded-full bg-space-teal absolute shadow-[0_0_12px_rgba(6,182,212,0.9)] border-2 border-[#0d0d1a] group hover:scale-150 hover:bg-white transition-all cursor-pointer z-20"
-                   style={{ top: `calc(50% + ${offsetY}%)`, left: `calc(50% + ${offsetX}%)`, transform: 'translate(-50%, -50%)' }}
-                 >
-                   <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-space-surface/90 border border-space-teal/30 px-3 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity min-w-max pointer-events-none z-30 shadow-xl">
-                     <p className="text-white text-xs font-bold whitespace-nowrap mb-1">{p.id}</p>
-                     <p className="text-space-text/70 text-[10px] font-mono whitespace-nowrap">{p.orbitalPeriod}d orbit</p>
-                   </div>
-                 </div>
-               );
+               return <PlanetDot key={p.id} planet={p} offsetX={offsetX} offsetY={offsetY} />;
              });
            })() : (
              <span className="text-space-text/40 font-mono relative text-sm uppercase tracking-widest bg-space-surface/80 px-4 py-2 rounded-full border border-white/5 z-10">Stellar Target Only</span>
@@ -124,15 +114,9 @@ export default function StarCharts({ star }) {
             </div>
 
             {star.planets.map(p => {
-               // Anchor: Jupiter = 128px = 11.2 R⊕ → 1 R⊕ = ~11.43px. Earth ≈ 11px (visible).
                const PX_PER_EARTH = 128 / 11.2;
                const size = Math.max(8, p.estimatedRadius * PX_PER_EARTH);
-               return (
-                 <div key={p.id} className="flex flex-col items-center gap-3 shrink-0 group">
-                   <div style={{ width: size, height: size }} className="rounded-full bg-gradient-to-br from-space-purple to-space-violet shadow-[0_0_20px_rgba(124,58,237,0.4),inset_-5px_-5px_15px_rgba(0,0,0,0.5)] group-hover:scale-110 transition-transform cursor-pointer"></div>
-                   <span className="text-xs text-white uppercase tracking-widest font-bold group-hover:text-space-purple transition-colors">{Number(p.estimatedRadius).toFixed(2)} R⊕</span>
-                 </div>
-               );
+               return <PlanetSizeDot key={p.id} planet={p} size={size} />;
             })}
 
             {/* Jupiter reference */}
@@ -145,6 +129,68 @@ export default function StarCharts({ star }) {
             </div>
          </div>
       </DetailChartCard>
+    </div>
+  );
+}
+
+const TOOLTIP_W = 190;
+
+function usePlanetTip() {
+  const [tip, setTip] = useState(null);
+  const compute = (e) => {
+    const x = e.clientX, y = e.clientY;
+    const fitsRight = x + 12 + TOOLTIP_W < window.innerWidth - 8;
+    return { x: fitsRight ? x + 12 : x - 12 - TOOLTIP_W, y: y - 56 };
+  };
+  return {
+    tip,
+    handlers: {
+      onMouseEnter: (e) => setTip(compute(e)),
+      onMouseMove: (e) => setTip(compute(e)),
+      onMouseLeave: () => setTip(null),
+    },
+  };
+}
+
+function PlanetTooltip({ planet, tip, borderColor = 'border-space-teal/50' }) {
+  return tip ? createPortal(
+    <div
+      className={`fixed z-[9999] bg-[#0d0d1a] border ${borderColor} px-3 py-2 rounded-lg pointer-events-none shadow-xl`}
+      style={{ left: tip.x, top: tip.y, width: TOOLTIP_W }}
+    >
+      <p className="text-white text-xs font-bold whitespace-nowrap mb-1">{planet.id}</p>
+      <p className="text-space-text/70 text-[10px] font-mono whitespace-nowrap">{Number(planet.estimatedRadius).toFixed(2)} R⊕</p>
+      <p className="text-space-text/70 text-[10px] font-mono whitespace-nowrap">{planet.orbitalPeriod}d orbit</p>
+    </div>,
+    document.body
+  ) : null;
+}
+
+function PlanetDot({ planet, offsetX, offsetY }) {
+  const { tip, handlers } = usePlanetTip();
+  return (
+    <>
+      <div
+        className="w-4 h-4 rounded-full bg-space-teal absolute shadow-[0_0_12px_rgba(6,182,212,0.9)] border-2 border-[#0d0d1a] hover:scale-150 hover:bg-white transition-all cursor-pointer z-20"
+        style={{ top: `calc(50% + ${offsetY}%)`, left: `calc(50% + ${offsetX}%)`, transform: 'translate(-50%, -50%)' }}
+        {...handlers}
+      />
+      <PlanetTooltip planet={planet} tip={tip} borderColor="border-space-teal/50" />
+    </>
+  );
+}
+
+function PlanetSizeDot({ planet, size }) {
+  const { tip, handlers } = usePlanetTip();
+  return (
+    <div className="flex flex-col items-center gap-3 shrink-0">
+      <div
+        style={{ width: size, height: size }}
+        className="rounded-full bg-gradient-to-br from-space-purple to-space-violet shadow-[0_0_20px_rgba(124,58,237,0.4),inset_-5px_-5px_15px_rgba(0,0,0,0.5)] hover:scale-110 transition-transform cursor-pointer"
+        {...handlers}
+      />
+      <PlanetTooltip planet={planet} tip={tip} borderColor="border-space-purple/50" />
+      <span className="text-xs text-white uppercase tracking-widest font-bold">{Number(planet.estimatedRadius).toFixed(2)} R⊕</span>
     </div>
   );
 }
