@@ -5,12 +5,47 @@ import shutil
 import os
 import numpy as np
 import pandas as pd
-import pandas as pd
 import torch
 from astropy.timeseries import BoxLeastSquares
 
 from app.model_def import InceptionResNet1D
 from app.processor import ExoplanetProcessor
+
+
+def _lttb(time: np.ndarray, flux: np.ndarray, n_out: int) -> tuple[np.ndarray, np.ndarray]:
+    """Largest Triangle Three Buckets downsampling — preserves visual extrema (transit dips)."""
+    n = len(time)
+    if n <= n_out:
+        return time, flux
+
+    # Always keep first and last point
+    bucket_size = (n - 2) / (n_out - 2)
+    idx = [0]
+
+    for i in range(n_out - 2):
+        # Next bucket range
+        a = idx[-1]
+        range_start = int((i + 1) * bucket_size) + 1
+        range_end = min(int((i + 2) * bucket_size) + 1, n)
+
+        # Average point of the next bucket (used as C)
+        c_start = int((i + 2) * bucket_size) + 1
+        c_end = min(int((i + 3) * bucket_size) + 1, n)
+        avg_x = np.mean(time[c_start:c_end]) if c_start < n else time[-1]
+        avg_y = np.mean(flux[c_start:c_end]) if c_start < n else flux[-1]
+
+        # Point A
+        ax, ay = time[a], flux[a]
+
+        # Find point in current bucket that forms largest triangle with A and C
+        bucket_time = time[range_start:range_end]
+        bucket_flux = flux[range_start:range_end]
+        areas = np.abs((ax - avg_x) * (bucket_flux - ay) - (ax - bucket_time) * (avg_y - ay))
+        best = np.argmax(areas)
+        idx.append(range_start + best)
+
+    idx.append(n - 1)
+    return time[idx], flux[idx]
 
 app = FastAPI()
 
@@ -164,10 +199,12 @@ def run_pipeline(job_id, file_path, star_name="Unknown Star"):
         noise = np.random.normal(0, 0.0005, len(normalized_flux))
         normalized_flux = normalized_flux + noise
         
-        # Send all data points to preserve continuous flux signal
-        lightCurve = []
-        for t, f in zip(valid_time, normalized_flux):
-            lightCurve.append({"time": round(float(t), 4), "flux": round(float(f), 6)})
+        # Downsample to 2000 points using LTTB so transit dips are preserved
+        ds_time, ds_flux = _lttb(valid_time, normalized_flux, n_out=2000)
+        lightCurve = [
+            {"time": round(float(t), 4), "flux": round(float(f), 6)}
+            for t, f in zip(ds_time, ds_flux)
+        ]
 
         valid = ~np.isnan(raw_flux)
         rt_clean = raw_time[valid]

@@ -50,13 +50,16 @@ export default function StarCharts({ star }) {
       
       <DetailChartCard title="Orbital Diagram Model" tooltip="A schematic view of detected planets orbiting their host star. Orbit sizes are scaled relative to each other by orbital period — longer period = larger orbit. Hover over a planet dot for details.">
          <div className="w-full h-full flex flex-col justify-center items-center relative overflow-hidden">
-           {/* Orbit ellipses scaled by orbital period */}
+           {/* Orbit ellipses scaled by orbital period (log scale so spread orbits stay distinguishable) */}
            {star.planets.length > 0 ? (() => {
-             const maxPeriod = Math.max(...star.planets.map(p => p.orbitalPeriod || 1));
+             const periods = star.planets.map(p => Math.max(p.orbitalPeriod || 1, 0.5));
+             const logMin = Math.log(Math.min(...periods));
+             const logMax = Math.log(Math.max(...periods));
+             const logRange = logMax - logMin || 1;
              const MAX_W = 92; const MIN_W = 35;
              const MAX_H = 55; const MIN_H = 22;
              return star.planets.map((p, i) => {
-               const t = (p.orbitalPeriod || 1) / maxPeriod;
+               const t = (Math.log(Math.max(p.orbitalPeriod || 1, 0.5)) - logMin) / logRange;
                const w = MIN_W + t * (MAX_W - MIN_W);
                const h = MIN_H + t * (MAX_H - MIN_H);
                return (
@@ -79,11 +82,14 @@ export default function StarCharts({ star }) {
 
            {/* Planets positioned along their elliptical orbits */}
            {star.planets.length > 0 ? (() => {
-             const maxPeriod = Math.max(...star.planets.map(p => p.orbitalPeriod || 1));
+             const periods = star.planets.map(p => Math.max(p.orbitalPeriod || 1, 0.5));
+             const logMin = Math.log(Math.min(...periods));
+             const logMax = Math.log(Math.max(...periods));
+             const logRange = logMax - logMin || 1;
              const MAX_W = 92; const MIN_W = 35;
              const MAX_H = 55; const MIN_H = 22;
              return star.planets.map((p, i) => {
-               const t = (p.orbitalPeriod || 1) / maxPeriod;
+               const t = (Math.log(Math.max(p.orbitalPeriod || 1, 0.5)) - logMin) / logRange;
                const w = MIN_W + t * (MAX_W - MIN_W);
                const h = MIN_H + t * (MAX_H - MIN_H);
                const angleDeg = (i * 137.5) % 360;
