@@ -31,11 +31,11 @@ export default function PlanetCard({ planet }) {
       <div className="grid grid-cols-2 gap-y-8 gap-x-6 relative z-10">
         <div>
           <span className="text-space-text/40 text-[0.65rem] font-bold uppercase tracking-widest block mb-2">Orbital Period</span>
-          <span className="font-mono text-xl text-white">{planet.orbitalPeriod || planet.orbitalPeriodDays} <span className="text-xs text-space-text/50 font-sans tracking-wide">days</span></span>
+          <span className="font-mono text-xl text-white">{planet.orbitalPeriod ? planet.orbitalPeriod.toFixed(2) : (planet.orbitalPeriodDays ? planet.orbitalPeriodDays.toFixed(2) : '—')} <span className="text-xs text-space-text/50 font-sans tracking-wide">days</span></span>
         </div>
         <div>
           <span className="text-space-text/40 text-[0.65rem] font-bold uppercase tracking-widest block mb-2">Transit Depth</span>
-          <span className="font-mono text-xl text-white">{planet.transitDepth || planet.transitDepthPercent}%</span>
+          <span className="font-mono text-xl text-white">{planet.transitDepth ? planet.transitDepth.toFixed(4) : (planet.transitDepthPercent ? planet.transitDepthPercent.toFixed(2) : '—')}%</span>
         </div>
         <div className="col-span-2">
           <span className="text-space-text/40 text-[0.65rem] font-bold uppercase tracking-widest block mb-2">Estimated Radius</span>

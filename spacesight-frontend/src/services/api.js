@@ -1,98 +1,55 @@
+const BASE_URL = "http://127.0.0.1:8000";
+
+// -------------------------------
+// 1. SUBMIT FILE → /analyze
+// -------------------------------
 export const submitLightCurve = async (file) => {
-  // Mock submitting and getting a jobId
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({ jobId: 'job-' + Math.random().toString(36).substr(2, 9), status: 'accepted' });
-    }, 1000);
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(`${BASE_URL}/analyze`, {
+    method: "POST",
+    body: formData,
   });
+
+  if (!response.ok) {
+    throw new Error("Failed to submit file");
+  }
+
+  const data = await response.json();
+  return data; // { jobId }
 };
 
-// We will hold a module-level state for our mock progress sequentially marching
-const jobState = new Map();
-
+// -------------------------------
+// 2. GET STATUS → /status/{jobId}
+// -------------------------------
 export const getPipelineStatus = async (jobId) => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      if (!jobState.has(jobId)) {
-        jobState.set(jobId, { stageIndex: 1, startTime: Date.now() });
-      }
+  const response = await fetch(`${BASE_URL}/status/${jobId}`);
 
-      const job = jobState.get(jobId);
-      const now = Date.now();
-      const elapsedSeconds = (now - job.startTime) / 1000;
+  if (!response.ok) {
+    throw new Error("Failed to fetch status");
+  }
 
-      // Advance 1 stage every 2 seconds
-      let currentStage = Math.floor(elapsedSeconds / 2) + 1;
+  const data = await response.json();
 
-      if (currentStage >= 8) {
-        currentStage = 8;
-        resolve({
-          jobId,
-          status: 'done',
-          stageIndex: 8,
-          stageName: 'Done',
-          results: {
-            type: 'multi',
-            totalStars: 3,
-            totalPlanets: 3,
-            totalObservationSpan: 1459,
-            totalDataPoints: 145000,
-            stars: [
-              {
-                id: "KIC-757450",
-                name: "KIC-757450",
-                planets: [
-                  { id: "KIC-757450 b", orbitalPeriod: 12.5, transitDepth: 0.45, estimatedRadius: 2.1, confidence: "High" },
-                  { id: "KIC-757450 c", orbitalPeriod: 45.2, transitDepth: 0.12, estimatedRadius: 1.2, confidence: "High" }
-                ],
-                lightCurve: Array.from({ length: 1000 }, (_, i) => ({ time: i, flux: 1 - Math.random() * 0.01 })),
-                blsPeriodogram: Array.from({ length: 100 }, (_, i) => ({ period: i, power: Math.random() })),
-                orbitalParams: {},
-                observationSpan: 1459,
-                dataPoints: 65000
-              },
-              {
-                id: "KIC-002757168",
-                name: "KIC-002757168",
-                planets: [
-                  { id: "KIC-002757168 b", orbitalPeriod: 8.3, transitDepth: 0.18, estimatedRadius: 1.5, confidence: "Medium" }
-                ],
-                lightCurve: Array.from({ length: 1000 }, (_, i) => ({ time: i, flux: 1 - Math.random() * 0.01 })),
-                blsPeriodogram: Array.from({ length: 100 }, (_, i) => ({ period: i, power: Math.random() })),
-                orbitalParams: {},
-                observationSpan: 1200,
-                dataPoints: 50000
-              },
-              {
-                id: "KIC-009651668",
-                name: "KIC-009651668",
-                planets: [],
-                noPlanetConfidence: 73,
-                lightCurve: Array.from({ length: 1000 }, (_, i) => ({ time: i, flux: 1 - Math.random() * 0.01 })),
-                blsPeriodogram: Array.from({ length: 100 }, (_, i) => ({ period: i, power: Math.random() })),
-                orbitalParams: {},
-                observationSpan: 950,
-                dataPoints: 30000
-              }
-            ]
-          }
-        });
-        return;
-      }
+  return {
+    jobId,
+    status: data.done ? "done" : "processing",
+    stageIndex: data.stageIndex || 0,
+    stageName: data.stage,
+    progress: data.progress,
+  };
+};
 
-      const stages = [
-        "Start", "Loading", "Preprocessing", "Filtering",
-        "Normalization", "CNN Inference", "BLS Analysis", "Done"
-      ];
+// -------------------------------
+// 3. GET RESULTS → /results/{jobId}
+// -------------------------------
+export const getResults = async (jobId) => {
+  const response = await fetch(`${BASE_URL}/results/${jobId}`);
 
-      resolve({
-        jobId,
-        status: 'processing',
-        stageIndex: currentStage,
-        stageName: stages[currentStage - 1],
-        results: null
-      });
+  if (!response.ok) {
+    throw new Error("Failed to fetch results");
+  }
 
-    }, 300); // 300ms network delay mock
-  });
+  return await response.json();
 };

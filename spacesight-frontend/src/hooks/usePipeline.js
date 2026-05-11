@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getPipelineStatus } from '../services/api';
+import { getPipelineStatus, getResults } from '../services/api';
 
 export function usePipeline(jobId) {
   const [pipelineState, setPipelineState] = useState({
@@ -18,15 +18,23 @@ export function usePipeline(jobId) {
       try {
         const res = await getPipelineStatus(jobId);
         
-        setPipelineState(prev => ({
-          ...prev,
-          stageIndex: res.stageIndex,
-          status: res.status,
-          results: res.results
-        }));
-
         if (res.status === 'done') {
           clearInterval(intervalId);
+          const finalResults = await getResults(jobId);
+          setPipelineState(prev => ({
+            ...prev,
+            stageIndex: res.stageIndex,
+            status: 'done',
+            progress: 100,
+            results: finalResults
+          }));
+        } else {
+          setPipelineState(prev => ({
+            ...prev,
+            stageIndex: res.stageIndex,
+            status: res.status,
+            progress: res.progress
+          }));
         }
 
       } catch (err) {

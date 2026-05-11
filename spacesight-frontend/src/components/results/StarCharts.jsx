@@ -4,19 +4,19 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 export default function StarCharts({ star }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full animate-fade-in">
-      <DetailChartCard title="Light Curve Flux Timeline">
+      <DetailChartCard title="Detrended Normalized Flux Timeline">
          <ResponsiveContainer width="100%" height="100%">
-           <LineChart data={star.lightCurve.slice(0, 200)} margin={{ top: 20, right: 10, left: -20, bottom: 20 }}>
+           <LineChart data={star.lightCurve} margin={{ top: 20, right: 10, left: -20, bottom: 20 }}>
              <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
              <XAxis dataKey="time" tick={false} axisLine={false} tickLine={false} />
              <YAxis domain={['auto', 'auto']} tick={{fill: '#ffffff50', fontSize: 10}} tickLine={false} axisLine={false} />
              <Tooltip 
                contentStyle={{backgroundColor: '#0d0d1a', border: '1px solid #7c3aed', color: '#fff', borderRadius: '12px', boxShadow: '0 0 20px rgba(124,58,237,0.3)'}}
                labelFormatter={() => 'Observation Timestamp'}
-               formatter={(val) => [val.toFixed(5), 'Normalized Flux']}
+               formatter={(val) => [val.toFixed(6), 'Normalized Flux']}
                cursor={{stroke: '#ffffff15', strokeWidth: 2}}
              />
-             <Line type="monotone" dataKey="flux" stroke="#7c3aed" dot={false} strokeWidth={2} activeDot={{r: 6, fill: '#7c3aed', stroke: '#0d0d1a', strokeWidth: 2}} />
+             <Line type="natural" dataKey="flux" stroke="#7c3aed" dot={false} strokeWidth={0.8} isAnimationActive={false} activeDot={{r: 6, fill: '#7c3aed', stroke: '#0d0d1a', strokeWidth: 2}} />
            </LineChart>
          </ResponsiveContainer>
       </DetailChartCard>
@@ -47,16 +47,19 @@ export default function StarCharts({ star }) {
               <span className="text-yellow-600/50 text-[10px] font-bold">STAR</span>
            </div>
            
-           {star.planets.length > 0 ? star.planets.map((p, i) => (
+           {star.planets.length > 0 ? star.planets.map((p, i) => {
+             const distance = 50 + Math.pow(p.orbitalPeriod || 1, 0.6) * 15;
+             return (
              <div key={p.id} className="w-5 h-5 rounded-full bg-space-teal absolute shadow-[0_0_15px_rgba(6,182,212,0.8)] border-2 border-[#0d0d1a] group hover:scale-150 hover:bg-white transition-all cursor-pointer z-10" 
-                  style={{ top: '50%', left: `calc(50% + ${80 + (i*45)}px)`, transform: 'translate(-50%, -50%)' }}
+                  style={{ top: '50%', left: `calc(50% + ${distance}px)`, transform: 'translate(-50%, -50%)' }}
              >
                 <div className="absolute top-8 left-1/2 -translate-x-1/2 bg-space-surface/90 backdrop-blur-md border border-space-teal/30 px-3 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity min-w-max pointer-events-none z-20 shadow-xl">
                    <p className="text-white text-xs font-bold whitespace-nowrap mb-1">{p.id}</p>
                    <p className="text-space-text/70 text-[10px] font-mono whitespace-nowrap">{p.orbitalPeriod}d orbit</p>
                 </div>
              </div>
-           )) : (
+             );
+           }) : (
              <span className="text-space-text/40 font-mono relative mt-48 text-sm uppercase tracking-widest bg-space-surface/80 px-4 py-2 rounded-full border border-white/5">Stellar Target Only</span>
            )}
          </div>

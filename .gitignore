@@ -1,0 +1,15 @@
+venv/
+.venv/
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+models/*.pt
+dist/
+build/
+.DS_Store
+*.npz
+*.zip
+temp_*

@@ -26,7 +26,7 @@ This document specifies the interaction flows between the frontend and the Pytho
 - **Response Format:**
   ```json
   {
-    "stage": "preprocessing", // Enum: 'start', 'loading', 'preprocessing', 'filtering', 'normalization', 'cnn_inference', 'bls_analysis', 'generate_visualizations', 'done'
+    "stage": "preprocessing", // Enum: 'start', 'loading', 'preprocessing', 'cnn_inference', 'bls_analysis', 'generate_visualizations', 'done'
     "stageIndex": 3,
     "progress": 35, // 0-100%
     "done": false

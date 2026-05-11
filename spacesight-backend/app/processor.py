@@ -43,7 +43,7 @@ class ExoplanetProcessor:
     # PUBLIC API
     # =========================================================================
 
-    def analyze_raw_lightcurve(self, kic_id, raw_time, raw_flux):
+    def analyze_raw_lightcurve(self, kic_id, raw_time, raw_flux, progress_callback=None):
         """
         End-to-end pipeline: clean -> CNN triage -> (BLS verification if candidate).
 
@@ -67,7 +67,9 @@ class ExoplanetProcessor:
         #   segments      : list of (time, flux) tuples, one per valid segment
         #                   -> BLS (each segment is quarter-normalized)
         # ------------------------------------------------------------------
-        cnn_windows, segments = self._preprocess_and_window(kic_id, raw_time, raw_flux)
+        if progress_callback:
+            progress_callback("preprocessing", 20)
+        cnn_windows, segments, clean_flux_full, full_time = self._preprocess_and_window(kic_id, raw_time, raw_flux)
 
         if len(cnn_windows) == 0:
             return {
@@ -78,6 +80,8 @@ class ExoplanetProcessor:
         # ------------------------------------------------------------------
         # STAGE 1B - CNN INFERENCE
         # ------------------------------------------------------------------
+        if progress_callback:
+            progress_callback("cnn_inference", 40)
         tensor_data = torch.tensor(cnn_windows, dtype=torch.float32)
         self.model.eval()
         with torch.no_grad():
@@ -98,6 +102,8 @@ class ExoplanetProcessor:
         # core cost-saving step of the pipeline.
         # ------------------------------------------------------------------
         if not is_candidate:
+            if progress_callback:
+                progress_callback("done", 100)
             return {
                 "kic_id":           kic_id,
                 "cnn_candidate":    False,
@@ -105,7 +111,12 @@ class ExoplanetProcessor:
                 "windows_analyzed": len(cnn_windows),
                 "planets_detected": 0,
                 "detections":       [],
+                "detrended_flux":   clean_flux_full,
+                "detrended_time":   full_time,
             }
+        
+        if progress_callback:
+            progress_callback("bls_analysis", 60)
 
         # ------------------------------------------------------------------
         # STAGE 2 - ITERATIVE BLS PHYSICS VERIFICATION
@@ -125,6 +136,8 @@ class ExoplanetProcessor:
         harmonic_skips = 0
 
         for i in range(max_iterations):
+            if progress_callback:
+                progress_callback("bls_analysis", 60 + int((i / max_iterations) * 30))
             planet_result = self._verify_physics(kic_id, current_segs)
 
             if planet_result["calculated"]["bls_power"] < self.bls_threshold:
@@ -235,6 +248,8 @@ class ExoplanetProcessor:
             "windows_analyzed": len(cnn_windows),
             "planets_detected": len(found_planets),
             "detections":       found_planets,
+            "detrended_flux":   clean_flux_full,
+            "detrended_time":   full_time,
         }
 
     # =========================================================================
@@ -286,7 +301,7 @@ class ExoplanetProcessor:
 
         cnn_windows, _, _ = self._segment_into_windows(kic_id, raw_time, clean_flux_full)
 
-        return cnn_windows, segments
+        return cnn_windows, segments, clean_flux_full, raw_time
 
     def _detrend_segment(self, time, flux):
         """
