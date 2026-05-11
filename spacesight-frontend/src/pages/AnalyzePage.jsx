@@ -71,7 +71,7 @@ export default function AnalyzePage() {
             {STAGES.map((stageName, idx) => {
               const stageIndex = idx + 1;
               const isCompleted = pipelineState.stageIndex > stageIndex;
-              const isActive = pipelineState.stageIndex === stageIndex && pipelineState.status !== 'done';
+              const isActive = pipelineState.stageIndex === stageIndex && pipelineState.stageIndex > 0 && pipelineState.status !== 'done';
               const isFuture = pipelineState.stageIndex < stageIndex;
 
               return (
