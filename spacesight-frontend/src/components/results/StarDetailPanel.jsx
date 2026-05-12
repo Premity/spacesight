@@ -26,7 +26,7 @@ export default function StarDetailPanel({ star }) {
            </p>
         </div>
       ) : (
-        <div className="flex justify-start gap-8 overflow-x-auto pb-6 custom-scrollbar snap-x">
+        <div className="flex justify-start gap-8 overflow-x-auto overflow-y-visible py-4 custom-scrollbar snap-x">
            {star.planets.map(p => (
              <div key={p.id} className="snap-start min-w-[320px] max-w-sm flex-shrink-0">
                 <PlanetCard planet={p} />

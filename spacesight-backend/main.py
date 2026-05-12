@@ -5,12 +5,47 @@ import shutil
 import os
 import numpy as np
 import pandas as pd
-import pandas as pd
 import torch
 from astropy.timeseries import BoxLeastSquares
 
 from app.model_def import InceptionResNet1D
 from app.processor import ExoplanetProcessor
+
+
+def _lttb(time: np.ndarray, flux: np.ndarray, n_out: int) -> tuple[np.ndarray, np.ndarray]:
+    """Largest Triangle Three Buckets downsampling — preserves visual extrema (transit dips)."""
+    n = len(time)
+    if n <= n_out:
+        return time, flux
+
+    # Always keep first and last point
+    bucket_size = (n - 2) / (n_out - 2)
+    idx = [0]
+
+    for i in range(n_out - 2):
+        # Next bucket range
+        a = idx[-1]
+        range_start = int((i + 1) * bucket_size) + 1
+        range_end = min(int((i + 2) * bucket_size) + 1, n)
+
+        # Average point of the next bucket (used as C)
+        c_start = int((i + 2) * bucket_size) + 1
+        c_end = min(int((i + 3) * bucket_size) + 1, n)
+        avg_x = np.mean(time[c_start:c_end]) if c_start < n else time[-1]
+        avg_y = np.mean(flux[c_start:c_end]) if c_start < n else flux[-1]
+
+        # Point A
+        ax, ay = time[a], flux[a]
+
+        # Find point in current bucket that forms largest triangle with A and C
+        bucket_time = time[range_start:range_end]
+        bucket_flux = flux[range_start:range_end]
+        areas = np.abs((ax - avg_x) * (bucket_flux - ay) - (ax - bucket_time) * (avg_y - ay))
+        best = np.argmax(areas)
+        idx.append(range_start + best)
+
+    idx.append(n - 1)
+    return time[idx], flux[idx]
 
 app = FastAPI()
 
@@ -78,7 +113,7 @@ catalog_df = pd.read_csv(CATALOG_PATH)
 # -------------------------------
 # BACKGROUND PIPELINE
 # -------------------------------
-def run_pipeline(job_id, file_path):
+def run_pipeline(job_id, file_path, star_name="Unknown Star"):
     try:
         jobs[job_id]["stage"] = "loading"
         jobs[job_id]["progress"] = 10
@@ -88,6 +123,11 @@ def run_pipeline(job_id, file_path):
         with np.load(file_path, allow_pickle=True) as data:
             raw_time = data["time"].copy()
             raw_flux = data["flux"].copy()
+
+        # Extract numeric KIC ID from star name for catalog lookup
+        import re
+        kic_match = re.search(r'\d+', star_name)
+        kic_id = kic_match.group(0) if kic_match else star_name
 
         processor = ExoplanetProcessor(
             model,
@@ -103,7 +143,7 @@ def run_pipeline(job_id, file_path):
             print(f"[{job_id}] Progress: {stage} - {pct}%")
 
         result = processor.analyze_raw_lightcurve(
-            "uploaded_star",
+            kic_id,
             raw_time,
             raw_flux,
             progress_callback=progress_cb
@@ -114,16 +154,15 @@ def run_pipeline(job_id, file_path):
         # -------------------------------
         planets = []
         for i, p in enumerate(result.get("detections", [])):
-            # Determine planet ID: use catalog match if available
-            planet_id = f"Planet-{i+1}"  # fallback
-            # Attempt to retrieve matched KOI ID from processor result if present
+            planet_letter = chr(ord('b') + i)  # b, c, d, ...
+            planet_id = f"{star_name} {planet_letter}"
             if "catalog_match" in p:
                 planet_id = p["catalog_match"].get("id", planet_id)
             planets.append({
                 "id": planet_id,
                 "orbitalPeriod": round(p["calculated"]["period"], 2),
                 "transitDepth": round(p["calculated"]["bls_power"], 4),
-                "estimatedRadius": p["calculated"]["radius"],
+                "estimatedRadius": round(p["calculated"]["radius"], 2),
                 "confidence": "High" if p["calculated"]["bls_power"] > 10 else "Low"
             })
 
@@ -160,10 +199,12 @@ def run_pipeline(job_id, file_path):
         noise = np.random.normal(0, 0.0005, len(normalized_flux))
         normalized_flux = normalized_flux + noise
         
-        # Send all data points to preserve continuous flux signal
-        lightCurve = []
-        for t, f in zip(valid_time, normalized_flux):
-            lightCurve.append({"time": round(float(t), 4), "flux": round(float(f), 6)})
+        # Downsample to 2000 points using LTTB so transit dips are preserved
+        ds_time, ds_flux = _lttb(valid_time, normalized_flux, n_out=2000)
+        lightCurve = [
+            {"time": round(float(t), 4), "flux": round(float(f), 6)}
+            for t, f in zip(ds_time, ds_flux)
+        ]
 
         valid = ~np.isnan(raw_flux)
         rt_clean = raw_time[valid]
@@ -194,7 +235,7 @@ def run_pipeline(job_id, file_path):
             "stars": [
                 {
                     "id": job_id,
-                    "name": result.get("kic_id", "Unknown Star"),
+                    "name": star_name,
                     "planets": planets,
                     "noPlanetConfidence": 0 if planets else 80,
                     "lightCurve": lightCurve,
@@ -235,6 +276,10 @@ async def analyze(file: UploadFile = File(...)):
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
+    # Derive KIC name from filename: "KIC_757450.npz" → "KIC 757450"
+    raw_stem = os.path.splitext(file.filename or "")[0]
+    star_name = raw_stem.replace("_", " ").strip() or "Unknown Star"
+
     jobs[job_id] = {
         "stage": "start",
         "progress": 0,
@@ -244,7 +289,7 @@ async def analyze(file: UploadFile = File(...)):
 
     # Run in background thread
     import threading
-    thread = threading.Thread(target=run_pipeline, args=(job_id, file_path))
+    thread = threading.Thread(target=run_pipeline, args=(job_id, file_path, star_name))
     thread.start()
 
     return {"jobId": job_id}
