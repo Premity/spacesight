@@ -34,10 +34,14 @@ export const getPipelineStatus = async (jobId) => {
 
   return {
     jobId,
-    status: data.done ? "done" : "processing",
+    done: data.done === true,
     stageIndex: data.stageIndex || 0,
     stageName: data.stage,
     progress: data.progress,
+    error: data.error ?? null,
+    currentStar: data.currentStar ?? 0,
+    currentStarName: data.currentStarName ?? null,
+    totalStars: data.totalStars ?? 1,
   };
 };
 

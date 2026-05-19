@@ -10,15 +10,16 @@ export function usePipeline(jobId) {
     progress: 0,
     results: null,
     error: null,
+    currentStar: 0,
+    currentStarName: null,
+    totalStars: 1,
   });
 
-  // Tracks the highest stageIndex the backend has reported so far.
   const targetStageRef = useRef(0);
-  // Tracks the stageIndex currently shown to the user.
   const displayedStageRef = useRef(0);
-  // Whether the job has fully completed on the backend.
   const doneRef = useRef(false);
   const resultsRef = useRef(null);
+  const lastStarRef = useRef(0);
 
   useEffect(() => {
     if (!jobId) return;
@@ -27,10 +28,19 @@ export function usePipeline(jobId) {
     displayedStageRef.current = 0;
     doneRef.current = false;
     resultsRef.current = null;
+    lastStarRef.current = 0;
 
-    setPipelineState({ stageIndex: 0, status: 'processing', progress: 0, results: null, error: null });
+    setPipelineState({
+      stageIndex: 0,
+      status: 'processing',
+      progress: 0,
+      results: null,
+      error: null,
+      currentStar: 0,
+      currentStarName: null,
+      totalStars: 1,
+    });
 
-    // Advance displayed stage one step at a time so the user sees each stage light up.
     const stepInterval = setInterval(() => {
       if (displayedStageRef.current < targetStageRef.current) {
         displayedStageRef.current += 1;
@@ -52,24 +62,46 @@ export function usePipeline(jobId) {
       }
     }, STEP_DELAY_MS);
 
-    // Poll the backend for real progress.
     const pollInterval = setInterval(async () => {
       try {
         const res = await getPipelineStatus(jobId);
 
-        // Always advance the target to whichever stage the backend is on.
+        // When the backend advances to a new star, reset stage animation so
+        // the user sees each stage light up again for the new star.
+        if (res.currentStar && res.currentStar !== lastStarRef.current) {
+          lastStarRef.current = res.currentStar;
+          if (res.currentStar > 1) {
+            // Allow stage indicator to walk forward from "loading" again
+            displayedStageRef.current = Math.min(displayedStageRef.current, 1);
+            targetStageRef.current = Math.min(targetStageRef.current, 1);
+          }
+        }
+
         if (res.stageIndex > targetStageRef.current) {
           targetStageRef.current = res.stageIndex;
         }
 
-        setPipelineState(prev => ({ ...prev, progress: res.progress }));
+        setPipelineState(prev => ({
+          ...prev,
+          progress: res.progress,
+          currentStar: res.currentStar ?? prev.currentStar,
+          currentStarName: res.currentStarName ?? prev.currentStarName,
+          totalStars: res.totalStars ?? prev.totalStars,
+          error: res.error ?? prev.error,
+        }));
 
-        if (res.status === 'done') {
+        if (res.error) {
+          clearInterval(pollInterval);
+          clearInterval(stepInterval);
+          setPipelineState(prev => ({ ...prev, status: 'error', error: res.error }));
+          return;
+        }
+
+        if (res.done === true) {
           clearInterval(pollInterval);
           const finalResults = await getResults(jobId);
           resultsRef.current = finalResults;
           doneRef.current = true;
-          // Ensure target is at the final stage so the step timer walks up to it.
           targetStageRef.current = res.stageIndex;
         }
       } catch (err) {

@@ -1,8 +1,11 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from uuid import uuid4
 import shutil
 import os
+import re
+import zipfile
+import threading
 import numpy as np
 import pandas as pd
 import torch
@@ -10,6 +13,8 @@ from astropy.timeseries import BoxLeastSquares
 
 from app.model_def import InceptionResNet1D
 from app.processor import ExoplanetProcessor
+
+MAX_STARS_PER_JOB = 20
 
 
 def _lttb(time: np.ndarray, flux: np.ndarray, n_out: int) -> tuple[np.ndarray, np.ndarray]:
@@ -111,159 +116,195 @@ model.eval()
 catalog_df = pd.read_csv(CATALOG_PATH)
 
 # -------------------------------
-# BACKGROUND PIPELINE
+# PER-STAR ANALYSIS
 # -------------------------------
-def run_pipeline(job_id, file_path, star_name="Unknown Star"):
+def analyze_one_star(job_id, star_index, star_name, raw_time, raw_flux, progress_cb):
+    """Run the full pipeline for a single star and return the formatted star dict."""
+    kic_match = re.search(r'\d+', star_name)
+    kic_id = kic_match.group(0) if kic_match else star_name
+
+    processor = ExoplanetProcessor(
+        model,
+        catalog_df,
+        config=CONFIG,
+        cnn_threshold=0.70,
+        bls_threshold=4.0
+    )
+
+    result = processor.analyze_raw_lightcurve(
+        kic_id,
+        raw_time,
+        raw_flux,
+        progress_callback=progress_cb
+    )
+
+    # -------- FORMAT PLANETS --------
+    planets = []
+    for i, p in enumerate(result.get("detections", [])):
+        planet_letter = chr(ord('b') + i)
+        planet_id = f"{star_name} {planet_letter}"
+        if "catalog_match" in p:
+            planet_id = p["catalog_match"].get("id", planet_id)
+        planets.append({
+            "id": planet_id,
+            "orbitalPeriod": round(p["calculated"]["period"], 2),
+            "transitDepth": round(p["calculated"]["bls_power"], 4),
+            "estimatedRadius": round(p["calculated"]["radius"], 2),
+            "confidence": "High" if p["calculated"]["bls_power"] > 10 else "Low"
+        })
+
+    progress_cb("generate_visualizations", 90)
+
+    # -------- LIGHTCURVE --------
+    if "detrended_flux" in result:
+        vis_flux = result["detrended_flux"]
+        vis_time = result["detrended_time"]
+    else:
+        vis_flux = raw_flux
+        vis_time = raw_time
+
+    valid_mask = ~np.isnan(vis_flux)
+    valid_time = vis_time[valid_mask]
+    valid_flux = vis_flux[valid_mask]
+
+    flux_median = np.nanmedian(valid_flux)
+    normalized_flux = valid_flux / flux_median if flux_median > 0 else valid_flux
+
+    np.random.seed(42)
+    noise = np.random.normal(0, 0.0005, len(normalized_flux))
+    normalized_flux = normalized_flux + noise
+
+    ds_time, ds_flux = _lttb(valid_time, normalized_flux, n_out=2000)
+    lightCurve = [
+        {"time": round(float(t), 4), "flux": round(float(f), 6)}
+        for t, f in zip(ds_time, ds_flux)
+    ]
+
+    # -------- PERIODOGRAM --------
+    valid = ~np.isnan(raw_flux)
+    rt_clean = raw_time[valid]
+    rf_clean = raw_flux[valid]
+    med = np.nanmedian(rf_clean)
+    if med > 0:
+        rf_clean = rf_clean / med
+
+    bls_periodogram_data = []
     try:
-        jobs[job_id]["stage"] = "loading"
-        jobs[job_id]["progress"] = 10
-        print(f"[{job_id}] Progress: loading - 10%")
+        bls = BoxLeastSquares(rt_clean, rf_clean)
+        period_grid = np.linspace(0.5, 50.0, 500)
+        bls_results = bls.power(period_grid, 0.1)
+        for p, pw in zip(bls_results.period, bls_results.power):
+            bls_periodogram_data.append({"period": round(float(p), 4), "power": round(float(pw), 4)})
+    except Exception as e:
+        print(f"⚠️ Could not generate periodogram for {star_name}: {e}")
 
-        # ✅ FIX: Properly load and CLOSE file
-        with np.load(file_path, allow_pickle=True) as data:
-            raw_time = data["time"].copy()
-            raw_flux = data["flux"].copy()
+    obs_span = round(float(raw_time[-1] - raw_time[0]), 2) if len(raw_time) > 0 else 0
+    total_data_points = len(raw_time)
 
-        # Extract numeric KIC ID from star name for catalog lookup
-        import re
-        kic_match = re.search(r'\d+', star_name)
-        kic_id = kic_match.group(0) if kic_match else star_name
+    return {
+        "id": f"{job_id}-{star_index}",
+        "name": star_name,
+        "planets": planets,
+        "noPlanetConfidence": 0 if planets else 80,
+        "lightCurve": lightCurve,
+        "blsPeriodogram": bls_periodogram_data,
+        "orbitalParams": {},
+        "observationSpan": obs_span,
+        "dataPoints": total_data_points,
+    }
 
-        processor = ExoplanetProcessor(
-            model,
-            catalog_df,
-            config=CONFIG,
-            cnn_threshold=0.70,
-            bls_threshold=4.0
-        )
 
-        def progress_cb(stage, pct):
-            jobs[job_id]["stage"] = stage
-            jobs[job_id]["progress"] = pct
-            print(f"[{job_id}] Progress: {stage} - {pct}%")
+# -------------------------------
+# BACKGROUND PIPELINE (multi-star)
+# -------------------------------
+def run_pipeline(job_id, star_inputs, cleanup_paths):
+    """
+    star_inputs:   list of (star_name, npz_path)
+    cleanup_paths: list of files/dirs to remove when done
+    """
+    try:
+        total = len(star_inputs)
+        formatted_stars = []
+        per_star_errors = []
 
-        result = processor.analyze_raw_lightcurve(
-            kic_id,
-            raw_time,
-            raw_flux,
-            progress_callback=progress_cb
-        )
+        for idx, (star_name, npz_path) in enumerate(star_inputs):
+            jobs[job_id]["current_star"] = idx + 1
+            jobs[job_id]["current_star_name"] = star_name
+            jobs[job_id]["stage"] = "loading"
+            jobs[job_id]["progress"] = 10
+            print(f"[{job_id}] Star {idx + 1}/{total}: {star_name} — loading 10%")
 
-        # -------------------------------
-        # FORMAT TO FRONTEND SCHEMA
-        # -------------------------------
-        planets = []
-        for i, p in enumerate(result.get("detections", [])):
-            planet_letter = chr(ord('b') + i)  # b, c, d, ...
-            planet_id = f"{star_name} {planet_letter}"
-            if "catalog_match" in p:
-                planet_id = p["catalog_match"].get("id", planet_id)
-            planets.append({
-                "id": planet_id,
-                "orbitalPeriod": round(p["calculated"]["period"], 2),
-                "transitDepth": round(p["calculated"]["bls_power"], 4),
-                "estimatedRadius": round(p["calculated"]["radius"], 2),
-                "confidence": "High" if p["calculated"]["bls_power"] > 10 else "Low"
-            })
+            def progress_cb(stage, pct, _idx=idx, _name=star_name):
+                jobs[job_id]["stage"] = stage
+                jobs[job_id]["progress"] = pct
+                print(f"[{job_id}] Star {_idx + 1}/{total}: {_name} — {stage} {pct}%")
 
-        jobs[job_id]["stage"] = "generate_visualizations"
-        jobs[job_id]["progress"] = 90
-        print(f"[{job_id}] Progress: generate_visualizations - 90%")
+            try:
+                with np.load(npz_path, allow_pickle=True) as data:
+                    raw_time = data["time"].copy()
+                    raw_flux = data["flux"].copy()
 
-        # -------------------------------
-        # POPULATE LIGHTCURVE & PERIODOGRAM
-        # Use detrended flux from processor for smooth continuous representation
-        # -------------------------------
-        # Prefer detrended flux if available (shows transits without quarter offsets)
-        if "detrended_flux" in result:
-            vis_flux = result["detrended_flux"]
-            vis_time = result["detrended_time"]
-        else:
-            vis_flux = raw_flux
-            vis_time = raw_time
-        
-        # Remove NaNs that mark invalid segments
-        valid_mask = ~np.isnan(vis_flux)
-        valid_time = vis_time[valid_mask]
-        valid_flux = vis_flux[valid_mask]
-        
-        # Normalize by median to center around 1.0 (shows transits as small dips)
-        flux_median = np.nanmedian(valid_flux)
-        if flux_median > 0:
-            normalized_flux = valid_flux / flux_median
-        else:
-            normalized_flux = valid_flux
-        
-        # Add small Gaussian noise to simulate observational variability (~500 ppm)
-        np.random.seed(42)  # For reproducibility
-        noise = np.random.normal(0, 0.0005, len(normalized_flux))
-        normalized_flux = normalized_flux + noise
-        
-        # Downsample to 2000 points using LTTB so transit dips are preserved
-        ds_time, ds_flux = _lttb(valid_time, normalized_flux, n_out=2000)
-        lightCurve = [
-            {"time": round(float(t), 4), "flux": round(float(f), 6)}
-            for t, f in zip(ds_time, ds_flux)
-        ]
+                star_dict = analyze_one_star(
+                    job_id, idx + 1, star_name, raw_time, raw_flux, progress_cb
+                )
+                formatted_stars.append(star_dict)
+            except Exception as star_err:
+                msg = f"{star_name}: {star_err}"
+                print(f"⚠️ Star failed — {msg}")
+                per_star_errors.append(msg)
+                formatted_stars.append({
+                    "id": f"{job_id}-{idx + 1}",
+                    "name": star_name,
+                    "planets": [],
+                    "noPlanetConfidence": 0,
+                    "lightCurve": [],
+                    "blsPeriodogram": [],
+                    "orbitalParams": {},
+                    "observationSpan": 0,
+                    "dataPoints": 0,
+                    "error": str(star_err),
+                })
 
-        valid = ~np.isnan(raw_flux)
-        rt_clean = raw_time[valid]
-        rf_clean = raw_flux[valid]
-        med = np.nanmedian(rf_clean)
-        if med > 0:
-            rf_clean = rf_clean / med
-
-        bls_periodogram_data = []
-        try:
-            bls = BoxLeastSquares(rt_clean, rf_clean)
-            period_grid = np.linspace(0.5, 50.0, 500)
-            bls_results = bls.power(period_grid, 0.1)
-            for p, pw in zip(bls_results.period, bls_results.power):
-                bls_periodogram_data.append({"period": round(float(p), 4), "power": round(float(pw), 4)})
-        except Exception as e:
-            print(f"⚠️ Could not generate periodogram: {e}")
-
-        obs_span = round(float(raw_time[-1] - raw_time[0]), 2) if len(raw_time) > 0 else 0
-        total_data_points = len(raw_time)
+        # -------- AGGREGATE --------
+        total_planets = sum(len(s["planets"]) for s in formatted_stars)
+        total_span = sum(s["observationSpan"] for s in formatted_stars)
+        total_points = sum(s["dataPoints"] for s in formatted_stars)
 
         formatted = {
-            "type": "single",
-            "totalStars": 1,
-            "totalPlanets": len(planets),
-            "totalObservationSpan": obs_span,
-            "totalDataPoints": total_data_points,
-            "stars": [
-                {
-                    "id": job_id,
-                    "name": star_name,
-                    "planets": planets,
-                    "noPlanetConfidence": 0 if planets else 80,
-                    "lightCurve": lightCurve,
-                    "blsPeriodogram": bls_periodogram_data,
-                    "orbitalParams": {},
-                    "observationSpan": obs_span,
-                    "dataPoints": total_data_points
-                }
-            ]
+            "type": "multi" if total > 1 else "single",
+            "totalStars": total,
+            "totalPlanets": total_planets,
+            "totalObservationSpan": round(total_span, 2),
+            "totalDataPoints": total_points,
+            "stars": formatted_stars,
         }
+        if per_star_errors:
+            formatted["warnings"] = per_star_errors
 
         jobs[job_id]["result"] = formatted
         jobs[job_id]["stage"] = "done"
         jobs[job_id]["progress"] = 100
         jobs[job_id]["done"] = True
-        print(f"[{job_id}] Progress: done - 100%")
+        print(f"[{job_id}] All stars done — {total_planets} planets across {total} stars")
 
     except Exception as e:
+        print(f"[{job_id}] Pipeline error: {e}")
         jobs[job_id]["error"] = str(e)
+        jobs[job_id]["stage"] = "done"
         jobs[job_id]["done"] = True
 
     finally:
-        # ✅ FIX: Safe file deletion (prevents crash)
-        if os.path.exists(file_path):
+        for path in cleanup_paths:
+            if not os.path.exists(path):
+                continue
             try:
-                os.remove(file_path)
+                if os.path.isdir(path):
+                    shutil.rmtree(path, ignore_errors=True)
+                else:
+                    os.remove(path)
             except Exception as e:
-                print(f"⚠️ Could not delete temp file: {e}")
+                print(f"⚠️ Could not delete {path}: {e}")
+
 
 # -------------------------------
 # ENDPOINT: ANALYZE
@@ -272,27 +313,78 @@ def run_pipeline(job_id, file_path, star_name="Unknown Star"):
 async def analyze(file: UploadFile = File(...)):
     job_id = str(uuid4())
 
-    file_path = f"temp_{job_id}.npz"
-    with open(file_path, "wb") as buffer:
+    original_name = file.filename or "upload"
+    ext = os.path.splitext(original_name)[1].lower()
+
+    if ext not in (".npz", ".zip"):
+        raise HTTPException(status_code=400, detail="Only .npz or .zip files are accepted")
+
+    upload_path = f"temp_{job_id}{ext}"
+    with open(upload_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    # Derive KIC name from filename: "KIC_757450.npz" → "KIC 757450"
-    raw_stem = os.path.splitext(file.filename or "")[0]
-    star_name = raw_stem.replace("_", " ").strip() or "Unknown Star"
+    cleanup_paths = [upload_path]
+    star_inputs = []  # list of (star_name, npz_path)
+
+    try:
+        if ext == ".zip":
+            extract_dir = f"temp_{job_id}_extracted"
+            cleanup_paths.append(extract_dir)
+            os.makedirs(extract_dir, exist_ok=True)
+
+            with zipfile.ZipFile(upload_path, "r") as zf:
+                npz_members = [
+                    n for n in zf.namelist()
+                    if n.lower().endswith(".npz") and not n.startswith("__MACOSX/")
+                ]
+                if not npz_members:
+                    raise HTTPException(status_code=400, detail="Zip contains no .npz files")
+                if len(npz_members) > MAX_STARS_PER_JOB:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Zip contains {len(npz_members)} stars (max {MAX_STARS_PER_JOB})",
+                    )
+                for member in sorted(npz_members):
+                    zf.extract(member, path=extract_dir)
+                    npz_path = os.path.join(extract_dir, member)
+                    stem = os.path.splitext(os.path.basename(member))[0]
+                    star_name = stem.replace("_", " ").strip() or "Unknown Star"
+                    star_inputs.append((star_name, npz_path))
+        else:
+            stem = os.path.splitext(original_name)[0]
+            star_name = stem.replace("_", " ").strip() or "Unknown Star"
+            star_inputs.append((star_name, upload_path))
+    except HTTPException:
+        for path in cleanup_paths:
+            if os.path.exists(path):
+                if os.path.isdir(path):
+                    shutil.rmtree(path, ignore_errors=True)
+                else:
+                    os.remove(path)
+        raise
+    except Exception as e:
+        for path in cleanup_paths:
+            if os.path.exists(path):
+                if os.path.isdir(path):
+                    shutil.rmtree(path, ignore_errors=True)
+                else:
+                    os.remove(path)
+        raise HTTPException(status_code=400, detail=f"Could not read upload: {e}")
 
     jobs[job_id] = {
         "stage": "start",
         "progress": 0,
         "done": False,
-        "result": None
+        "result": None,
+        "current_star": 0,
+        "current_star_name": None,
+        "total_stars": len(star_inputs),
     }
 
-    # Run in background thread
-    import threading
-    thread = threading.Thread(target=run_pipeline, args=(job_id, file_path, star_name))
+    thread = threading.Thread(target=run_pipeline, args=(job_id, star_inputs, cleanup_paths))
     thread.start()
 
-    return {"jobId": job_id}
+    return {"jobId": job_id, "totalStars": len(star_inputs)}
 
 # -------------------------------
 # ENDPOINT: STATUS
@@ -309,7 +401,10 @@ def status(job_id: str):
         "stageIndex": STAGE_MAP.get(job["stage"], 0),
         "progress": job["progress"],
         "done": job["done"],
-        "error": job.get("error")
+        "error": job.get("error"),
+        "currentStar": job.get("current_star", 0),
+        "currentStarName": job.get("current_star_name"),
+        "totalStars": job.get("total_stars", 1),
     }
 
 # -------------------------------
