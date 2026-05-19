@@ -12,8 +12,42 @@ SpaceSight runs a two-stage triage-and-verify pipeline on raw Kepler photometric
 
 ```
 spacesight/
-├── spacesight-frontend/     React + Vite frontend
-└── spacesight-backend/      FastAPI + PyTorch backend
+├── spacesight-backend/              FastAPI + PyTorch backend
+│   ├── app/
+│   │   ├── __init__.py
+│   │   ├── main.py                  (legacy single-shot /predict endpoint)
+│   │   ├── model_def.py             InceptionResNet1D architecture
+│   │   └── processor.py             Preprocessing, CNN triage, BLS verification
+│   ├── data/
+│   │   └── koi_cumulative.csv       NASA KOI catalog for ground-truth matching
+│   ├── models/
+│   │   └── exoplanet_cnn_model.pt   Trained CNN weights
+│   ├── main.py                      FastAPI app — /analyze, /status, /results
+│   └── test_processor.py            Standalone pipeline test runner
+│
+├── spacesight-frontend/             React + Vite frontend
+│   ├── public/
+│   ├── src/
+│   │   ├── components/              Charts, upload, export, layout
+│   │   ├── context/                 AppContext (shared results state)
+│   │   ├── hooks/                   usePipeline polling hook
+│   │   ├── pages/                   Home, Analyze, Results
+│   │   ├── services/                api.js (BASE_URL hardcoded)
+│   │   ├── utils/
+│   │   ├── App.jsx
+│   │   └── main.jsx
+│   ├── test_data/                   Sample .npz / .zip files
+│   ├── .github/workflows/           GitHub Pages deploy
+│   ├── index.html
+│   ├── package.json
+│   ├── tailwind.config.js
+│   └── vite.config.js
+│
+├── CLAUDE.md
+├── LICENSE
+├── README.md
+├── requirements.txt                 Python dependencies (backend)
+└── setup.sh                         Installs deps + correct torch (CPU/CUDA)
 ```
 
 ---
@@ -22,9 +56,24 @@ spacesight/
 
 ### Prerequisites
 
-- Node.js v18+
 - Python 3.10+
-- pip
+- Node.js v18+
+- npm
+- (Optional) NVIDIA GPU with CUDA 12.1 drivers for GPU inference
+
+### Backend
+
+```bash
+bash setup.sh
+cd spacesight-backend
+uvicorn main:app --reload --port 8000
+```
+
+`setup.sh` installs everything in `requirements.txt`, then detects whether CUDA is available via `nvidia-smi` and installs the matching `torch` wheel (GPU `cu121` build or CPU-only). Run it from the repo root instead of `pip install -r requirements.txt` directly, otherwise you may end up with a torch build that doesn't match your hardware.
+
+The backend loads the CNN model (`models/exoplanet_cnn_model.pt`) and the KOI catalog (`data/koi_cumulative.csv`) on startup — both files must be present.
+
+Server runs at `http://127.0.0.1:8000`.
 
 ### Frontend
 
@@ -34,21 +83,18 @@ npm install
 npm run dev
 ```
 
-Runs at `http://localhost:5173`. The frontend expects the backend at `http://127.0.0.1:8000`.
-
-### Backend
-
-```bash
-cd spacesight-backend
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
-```
-
-The backend loads the CNN model (`models/exoplanet_cnn_model.pt`) and the KOI catalog (`data/koi_cumulative.csv`) on startup. Both files must be present before starting.
+Runs at `http://localhost:5173`. The frontend expects the backend at `http://127.0.0.1:8000` (hardcoded in [src/services/api.js](spacesight-frontend/src/services/api.js); update this for production deployments).
 
 ### Test data
 
-Sample `.npz` and `.zip` files are in `spacesight-frontend/test_data/`. Drop either into the Analyze page to run a full end-to-end test.
+Sample `.npz` and `.zip` files are in [spacesight-frontend/test_data/](spacesight-frontend/test_data/). Drop either into the Analyze page to run a full end-to-end test.
+
+For a backend-only sanity check, drop a `KIC_<id>.npz` file into the backend root and run:
+
+```bash
+cd spacesight-backend
+python test_processor.py
+```
 
 ---
 
@@ -70,11 +116,24 @@ Sample `.npz` and `.zip` files are in `spacesight-frontend/test_data/`. Drop eit
 
 | Library | Purpose |
 |---|---|
-| FastAPI | REST API framework |
+| FastAPI + Uvicorn | REST API framework and ASGI server |
+| python-multipart | `.npz` multipart upload handling |
 | PyTorch | InceptionResNet1D inference |
 | NumPy / SciPy | Signal processing, Whittaker-Henderson detrending |
-| Astropy | Box Least Squares periodogram |
+| Astropy | Box Least Squares periodogram (`astropy.timeseries`) |
 | Pandas | KOI catalog lookups |
+
+---
+
+## API
+
+- `POST /analyze` — accepts `.npz` multipart upload, returns `{ "jobId": "uuid" }`
+- `GET /status/{jobId}` — `{ stage, stageIndex, progress, done, error }`
+- `GET /results/{jobId}` — full nested result schema (see [spacesight-frontend/API_REQUIREMENTS.md](spacesight-frontend/API_REQUIREMENTS.md))
+
+Stage progression: `start → loading → preprocessing → cnn_inference → bls_analysis → generate_visualizations → done`.
+
+Backend `.npz` input must have two arrays: `time` (Kepler BJD timestamps) and `flux` (raw photon counts or pre-normalized).
 
 ---
 
@@ -92,7 +151,7 @@ Sample `.npz` and `.zip` files are in `spacesight-frontend/test_data/`. Drop eit
 
 ## Deployment
 
-The frontend deploys automatically to GitHub Pages on every push to `master` via `.github/workflows/deploy.yml`.
+The frontend deploys automatically to GitHub Pages on every push to `master` via [.github/workflows/deploy.yml](spacesight-frontend/.github/workflows/deploy.yml). The backend is not currently deployed — point the frontend at any reachable `http://...:8000` instance by editing `BASE_URL` in [src/services/api.js](spacesight-frontend/src/services/api.js).
 
 ---
 
@@ -110,4 +169,4 @@ MS Ramaiah Institute of Technology — Capstone Project 2025
 
 ## License
 
-[MIT](spacesight-frontend/LICENSE)
+[MIT](LICENSE)
