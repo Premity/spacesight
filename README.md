@@ -36,13 +36,19 @@ spacesight/
 │   │   ├── utils/
 │   │   ├── App.jsx
 │   │   └── main.jsx
-│   ├── test_data/                   Sample .npz / .zip files
 │   ├── .github/workflows/           GitHub Pages deploy
 │   ├── index.html
 │   ├── package.json
 │   ├── tailwind.config.js
 │   └── vite.config.js
 │
+├── docs/
+│   └── parallel-processing.md       Design doc for CPU/GPU pipeline upgrades
+├── test_data/                       Sample .npz / .zip files for testing
+│   ├── KIC_6541920.npz
+│   ├── KIC_6850504.npz
+│   ├── KIC_10593626.npz
+│   └── Test_Files.zip               All three .npz files bundled
 ├── CLAUDE.md
 ├── LICENSE
 ├── README.md
@@ -87,7 +93,7 @@ Runs at `http://localhost:5173`. The frontend expects the backend at `http://127
 
 ### Test data
 
-Sample `.npz` and `.zip` files are in [spacesight-frontend/test_data/](spacesight-frontend/test_data/). Drop either into the Analyze page to run a full end-to-end test.
+Sample `.npz` and `.zip` files are in [test_data/](test_data/) at the repo root. Drop either into the Analyze page to run a full end-to-end test — `Test_Files.zip` contains all three single-star `.npz` files bundled together to exercise the multi-star pipeline.
 
 For a backend-only sanity check, drop a `KIC_<id>.npz` file into the backend root and run:
 
@@ -127,13 +133,13 @@ python test_processor.py
 
 ## API
 
-- `POST /analyze` — accepts `.npz` multipart upload, returns `{ "jobId": "uuid" }`
-- `GET /status/{jobId}` — `{ stage, stageIndex, progress, done, error }`
+- `POST /analyze` — accepts a single `.npz` upload, or a `.zip` containing multiple `.npz` files (capped at 20 stars per job). Returns `{ "jobId": "uuid", "totalStars": N }`
+- `GET /status/{jobId}` — `{ stage, stageIndex, progress, done, error, currentStar, currentStarName, totalStars }`
 - `GET /results/{jobId}` — full nested result schema (see [spacesight-frontend/API_REQUIREMENTS.md](spacesight-frontend/API_REQUIREMENTS.md))
 
 Stage progression: `start → loading → preprocessing → cnn_inference → bls_analysis → generate_visualizations → done`.
 
-Backend `.npz` input must have two arrays: `time` (Kepler BJD timestamps) and `flux` (raw photon counts or pre-normalized).
+Each `.npz` input must have two arrays: `time` (Kepler BJD timestamps) and `flux` (raw photon counts or pre-normalized). Multi-star zip uploads are processed sequentially with per-star progress reporting — see [docs/parallel-processing.md](docs/parallel-processing.md) for future parallel/GPU upgrades.
 
 ---
 
