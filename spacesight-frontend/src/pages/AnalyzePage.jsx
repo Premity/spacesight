@@ -62,7 +62,23 @@ export default function AnalyzePage() {
     // STATE 2: PIPELINE TRACKER
     return (
       <div className="min-h-screen pt-32 pb-20 px-6 flex flex-col items-center relative z-10 w-full overflow-hidden text-space-text font-inter">
-        <h2 className="font-orbitron font-bold text-3xl md:text-4xl mb-12 drop-shadow-md">Analysis in Progress</h2>
+        <h2 className="font-orbitron font-bold text-3xl md:text-4xl mb-4 drop-shadow-md">Analysis in Progress</h2>
+
+        {pipelineState.totalStars > 1 && pipelineState.currentStar > 0 && pipelineState.status !== 'done' && (
+          <div className="mb-8 text-center animate-fade-in">
+            <p className="font-orbitron tracking-widest uppercase text-sm text-space-purple font-bold">
+              Star {pipelineState.currentStar} of {pipelineState.totalStars}
+            </p>
+            {pipelineState.currentStarName && (
+              <p className="font-mono text-space-text/70 text-base mt-1">{pipelineState.currentStarName}</p>
+            )}
+          </div>
+        )}
+        {pipelineState.totalStars > 1 && pipelineState.status === 'done' && (
+          <p className="mb-8 font-orbitron tracking-widest uppercase text-sm text-space-teal">
+            {pipelineState.totalStars} stars analyzed
+          </p>
+        )}
 
         <div className="w-full max-w-lg bg-space-surface/50 border border-white/10 p-10 rounded-[2rem] backdrop-blur-md shadow-[0_0_40px_rgba(0,0,0,0.5)] relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-space-purple to-space-teal opacity-50"></div>
@@ -115,6 +131,19 @@ export default function AnalyzePage() {
             <div className="mt-10 text-center animate-fade-in">
               <h3 className="font-orbitron text-xl text-white font-bold mb-2">Analysis Complete</h3>
               <p className="text-space-text/60 text-sm">Redirecting to results...</p>
+            </div>
+          )}
+
+          {pipelineState.status === 'error' && (
+            <div className="mt-10 text-center animate-fade-in">
+              <h3 className="font-orbitron text-xl text-red-400 font-bold mb-2">Analysis Failed</h3>
+              <p className="text-space-text/60 text-sm break-words">{pipelineState.error || 'Unknown error'}</p>
+              <button
+                onClick={() => { setJobId(null); setFile(null); }}
+                className="mt-6 px-6 py-2 rounded-full font-orbitron font-bold tracking-widest uppercase text-xs text-white bg-space-purple hover:bg-space-violet"
+              >
+                Try Again
+              </button>
             </div>
           )}
         </div>

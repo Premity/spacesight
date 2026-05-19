@@ -65,11 +65,11 @@ export default function StarCharts({ star }) {
                const h = MIN_H + t * (MAX_H - MIN_H);
                return (
                  <div key={`orbit-${p.id}`}
-                   className="border border-dashed absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+                   className="border-2 border-dashed absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
                    style={{
                      width: `${w}%`, height: `${h}%`,
                      borderRadius: '50%',
-                     borderColor: `rgba(6,182,212,${0.18 + i * 0.1})`,
+                     borderColor: `rgba(6,182,212,${0.45 + i * 0.12})`,
                    }}
                  />
                );
