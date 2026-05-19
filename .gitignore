@@ -12,5 +12,7 @@ build/
 .DS_Store
 *.npz
 *.zip
+!test_data/*.npz
+!test_data/*.zip
 temp_*
 CLAUDE.md
