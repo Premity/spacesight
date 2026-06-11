@@ -16,3 +16,7 @@ build/
 !test_data/*.zip
 temp_*
 CLAUDE.md
+
+# Training notebooks: research not yet published — do not commit until the team
+# decides to (see docs/ROADMAP.md / docs/repo-restructure-and-mlops-plan.md)
+ml/
