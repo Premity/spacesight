@@ -117,7 +117,7 @@ version was adopted as official protocol.**
   An LS-phased secondary channel would be confidently wrong most of the time, which is
   worse than flat fill.
 - **The corrected version:** substitute BLS for LS, and the idea converges to the
-  two-stage architecture in ROADMAP §4b — with one genuine improvement contributed by
+  three-stage architecture in ROADMAP §4b — with one genuine improvement contributed by
   this discussion: **train the Stage-C vetting CNN on ephemerides produced by running
   the actual BLS code on the training light curves**, with the catalog used only to
   label each BLS candidate (matches a known planet or not). Training-time channel noise
@@ -159,10 +159,16 @@ DVCLive/DVC Studio.
   `mlflow.log_metrics(epoch_record, step=epoch)`). Keep the CSV history as offline
   backup. Explicitly rejected: running both trackers or building an abstraction wrapper
   "for flexibility" — complexity buying nothing at this scale.
-- Right-sized MLOps stack, complete: experiment tracking (above) + DVC data/model
-  versioning + `dvc.yaml` pipeline (both in the
-  [restructure plan](repo-restructure-and-mlops-plan.md)). Model registries,
-  orchestrators, serving platforms: enterprise answers to problems we don't have — skip.
+- Right-sized MLOps stack: experiment tracking (W&B, above) + dataset/weights on
+  Google Drive (downloaded as needed) + a MODELS.md registry tying git tags to Drive
+  folders (see the [restructure plan](repo-restructure-and-mlops-plan.md)). Model
+  registries, orchestrators, serving platforms: enterprise answers to problems we
+  don't have — skip.
+  > **Update (2026-06-15):** the originally-planned DVC data/model versioning +
+  > `dvc.yaml` pipeline was **dropped** in favour of the simpler Drive-based scheme
+  > above — for a three-person capstone, "data on Drive, grab what you need" has zero
+  > setup and zero ops. Revisit a real versioning/pipeline tool only if manual
+  > reproduction becomes a recurring pain.
 
 ## 6. How the next few months get spent (agreed shape)
 

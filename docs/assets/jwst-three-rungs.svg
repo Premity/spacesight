@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="520" viewBox="0 0 900 520" font-family="-apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#475569"/>
+    </marker>
+    <style>
+      .r0 { fill: #fef3c7; stroke: #d97706; stroke-width: 1.5; }
+      .r1 { fill: #ecfeff; stroke: #06b6d4; stroke-width: 1.5; }
+      .r2 { fill: #fee2e2; stroke: #dc2626; stroke-width: 1.5; stroke-dasharray: 5 4; }
+      .contract { fill: #f1f5f9; stroke: #64748b; stroke-width: 1.5; }
+      .title { font-size: 16px; font-weight: 700; fill: #1e293b; }
+      .stage { font-size: 13px; font-weight: 700; fill: #1e293b; }
+      .sub { font-size: 10px; fill: #475569; }
+      .lbl { font-size: 10px; fill: #475569; }
+      .edge { stroke: #475569; stroke-width: 1.5; fill: none; marker-end: url(#ar); }
+    </style>
+  </defs>
+
+  <text x="30" y="32" class="title">Three rungs — staged, composing behind one abundance-vector contract</text>
+
+  <!-- the contract (center seam) -->
+  <rect x="300" y="240" width="300" height="64" rx="8" class="contract"/>
+  <text x="450" y="264" class="stage" text-anchor="middle">THE CONTRACT (the seam)</text>
+  <text x="450" y="284" class="sub" text-anchor="middle">{ molecule: abundance } vector + T_eq</text>
+  <text x="450" y="298" class="sub" text-anchor="middle">fixed interface — either a human or a model fills it</text>
+
+  <!-- Rung 0 -->
+  <rect x="30" y="90" width="380" height="120" rx="8" class="r0"/>
+  <text x="45" y="114" class="stage">RUNG 0 — Scorer  (build NOW)</text>
+  <text x="45" y="134" class="sub">disequilibrium-pair lookup + temperature filter</text>
+  <text x="45" y="150" class="sub">over hand-entered / gallery abundances</text>
+  <text x="45" y="170" class="sub">Research content: ~none (a calculator).</text>
+  <text x="45" y="186" class="sub">Value: the control-validation demo (Earth high,</text>
+  <text x="45" y="200" class="sub">hot-Jupiter penalised). Decoupled from transit work.</text>
+
+  <!-- Rung 1 -->
+  <rect x="490" y="90" width="380" height="120" rx="8" class="r1"/>
+  <text x="505" y="114" class="stage">RUNG 1 — Molecule CNN  (R&amp;D in parallel)</text>
+  <text x="505" y="134" class="sub">synthetic spectra (petitRADTRANS/HITRAN) →</text>
+  <text x="505" y="150" class="sub">train 1D CNN → detect molecules from a spectrum.</text>
+  <text x="505" y="170" class="sub">The real research. Same shape as the transit CNN,</text>
+  <text x="505" y="186" class="sub">repointed at a 1D spectrum. Validated on real JWST.</text>
+  <text x="505" y="200" class="sub">Owns the ephemeris-driven extraction step.</text>
+
+  <!-- Rung 2 -->
+  <rect x="260" y="380" width="380" height="100" rx="8" class="r2"/>
+  <text x="275" y="404" class="stage">RUNG 2 — Full Bayesian retrieval  (NON-GOAL)</text>
+  <text x="275" y="424" class="sub">VULCAN photochemistry + PICASO radiative transfer</text>
+  <text x="275" y="440" class="sub">in a nested sampler, with uncertainty quantification.</text>
+  <text x="275" y="456" class="sub">A research program, not a capstone feature. Named</text>
+  <text x="275" y="472" class="sub">as the frontier, deliberately not attempted.</text>
+
+  <!-- arrows into the contract -->
+  <path class="edge" d="M220 210 V272 H300"/>
+  <text x="200" y="232" class="lbl" text-anchor="middle">fills (manual)</text>
+  <path class="edge" d="M680 210 V272 H600"/>
+  <text x="700" y="232" class="lbl" text-anchor="middle">fills (model)</text>
+
+  <!-- contract down to scorer output -->
+  <path class="edge" d="M450 304 V340"/>
+  <text x="460" y="326" class="lbl">scored</text>
+  <rect x="350" y="340" width="200" height="28" rx="6" class="r0"/>
+  <text x="450" y="358" class="stage" text-anchor="middle" font-size="11">biosignature readout</text>
+
+  <!-- staging note -->
+  <text x="30" y="508" class="sub" font-weight="700">Staging:</text>
+  <text x="90" y="508" class="sub">Rung 0 ships now (decoupled). Rung 1 R&amp;D runs in parallel; integrates later by pointing the contract at the model instead of the gallery. Rung 2 is a stated non-goal.</text>
+</svg>

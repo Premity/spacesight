@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="640" viewBox="0 0 980 640" font-family="-apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#475569"/>
+    </marker>
+    <style>
+      .core { fill: #eef2ff; stroke: #6366f1; stroke-width: 1.5; }
+      .gate { fill: #fef3c7; stroke: #d97706; stroke-width: 1.5; }
+      .term { fill: #dcfce7; stroke: #16a34a; stroke-width: 1.5; }
+      .profile { fill: #f1f5f9; stroke: #94a3b8; stroke-width: 1.5; stroke-dasharray: 5 4; }
+      .reject { fill: #fee2e2; stroke: #dc2626; stroke-width: 1.5; }
+      .title { font-size: 16px; font-weight: 700; fill: #1e293b; }
+      .stage { font-size: 14px; font-weight: 700; fill: #1e293b; }
+      .sub { font-size: 10.5px; fill: #475569; }
+      .lbl { font-size: 10px; fill: #475569; }
+      .edge { stroke: #475569; stroke-width: 1.5; fill: none; marker-end: url(#arrow); }
+      .dash { stroke: #94a3b8; stroke-width: 1.2; fill: none; stroke-dasharray: 4 3; marker-end: url(#arrow); }
+      .adr { font-size: 9px; fill: #6366f1; font-style: italic; }
+    </style>
+  </defs>
+
+  <text x="30" y="34" class="title">SpaceSight — Kepler backend: three-stage detection pipeline (target state)</text>
+
+  <!-- Profile band -->
+  <rect x="30" y="58" width="920" height="58" rx="8" class="profile"/>
+  <text x="45" y="80" class="stage" fill="#475569">Instrument Profile (Kepler) — swappable</text>
+  <text x="45" y="100" class="sub">cadence · window-hours · time system · gap threshold · catalog adapter · max search period · detrend params · checkpoint files</text>
+  <text x="858" y="80" class="adr">ADR 0007</text>
+
+  <!-- Raw input -->
+  <rect x="30" y="150" width="150" height="56" rx="8" class="term"/>
+  <text x="105" y="174" class="stage" text-anchor="middle">Raw light curve</text>
+  <text x="105" y="192" class="sub" text-anchor="middle">time, flux (.npz)</text>
+
+  <!-- 1 Preprocess -->
+  <rect x="230" y="146" width="180" height="64" rx="8" class="core"/>
+  <text x="320" y="170" class="stage" text-anchor="middle">1 · Preprocess</text>
+  <text x="320" y="187" class="sub" text-anchor="middle">gap-split · per-segment</text>
+  <text x="320" y="200" class="sub" text-anchor="middle">WH detrend · window</text>
+
+  <!-- 2 Triage -->
+  <rect x="460" y="146" width="180" height="64" rx="8" class="core"/>
+  <text x="550" y="170" class="stage" text-anchor="middle">2 · Triage CNN</text>
+  <text x="550" y="187" class="sub" text-anchor="middle">single-channel</text>
+  <text x="550" y="200" class="sub" text-anchor="middle">per-window probs</text>
+  <text x="612" y="139" class="adr">ADR 0003</text>
+
+  <!-- Gate -->
+  <polygon points="780,178 850,146 920,178 850,210" class="gate"/>
+  <text x="850" y="175" class="stage" text-anchor="middle" font-size="12">Triage gate</text>
+  <text x="850" y="191" class="lbl" text-anchor="middle">max&gt;thr?</text>
+  <text x="893" y="139" class="adr">ADR 0004</text>
+
+  <!-- reject -->
+  <rect x="790" y="250" width="160" height="52" rx="8" class="reject"/>
+  <text x="870" y="272" class="stage" text-anchor="middle" font-size="12">No candidate</text>
+  <text x="870" y="289" class="sub" text-anchor="middle">cnn_candidate = false</text>
+
+  <!-- 3 Search -->
+  <rect x="460" y="330" width="180" height="72" rx="8" class="core"/>
+  <text x="550" y="356" class="stage" text-anchor="middle">3 · Search (BLS)</text>
+  <text x="550" y="373" class="sub" text-anchor="middle">per-segment power-sum</text>
+  <text x="550" y="386" class="sub" text-anchor="middle">pre-whitening + harmonic</text>
+  <text x="550" y="399" class="sub" text-anchor="middle">guard → candidate list</text>
+
+  <!-- 4 Vet -->
+  <rect x="230" y="330" width="180" height="72" rx="8" class="core"/>
+  <text x="320" y="356" class="stage" text-anchor="middle">4 · Vet CNN</text>
+  <text x="320" y="373" class="sub" text-anchor="middle">per-candidate</text>
+  <text x="320" y="386" class="sub" text-anchor="middle">build_vetting_channels(</text>
+  <text x="320" y="399" class="sub" text-anchor="middle">segments, ephemeris)</text>
+  <text x="300" y="323" class="adr">ADR 0002 · no catalog input</text>
+
+  <!-- 5 Report -->
+  <rect x="30" y="330" width="160" height="72" rx="8" class="core"/>
+  <text x="110" y="356" class="stage" text-anchor="middle">5 · Report</text>
+  <text x="110" y="373" class="sub" text-anchor="middle">Vet verdict · radius</text>
+  <text x="110" y="386" class="sub" text-anchor="middle">3-tier catalog match</text>
+  <text x="110" y="399" class="sub" text-anchor="middle">honest viz</text>
+
+  <!-- API result -->
+  <rect x="30" y="440" width="160" height="52" rx="8" class="term"/>
+  <text x="110" y="468" class="stage" text-anchor="middle">API result</text>
+  <text x="110" y="484" class="sub" text-anchor="middle">stars → planets</text>
+
+  <!-- edges -->
+  <path class="edge" d="M180 178 H230"/>
+  <path class="edge" d="M410 178 H460"/>
+  <path class="edge" d="M640 178 H780"/>
+  <text x="690" y="172" class="lbl" text-anchor="middle">max prob/star</text>
+  <path class="edge" d="M850 210 V250"/>
+  <text x="862" y="234" class="lbl">fail</text>
+  <path class="edge" d="M820 210 Q700 250 640 330"/>
+  <text x="700" y="280" class="lbl" text-anchor="middle">pass</text>
+  <path class="edge" d="M460 366 H410"/>
+  <text x="435" y="358" class="lbl" text-anchor="middle">candidates</text>
+  <text x="435" y="420" class="lbl" text-anchor="middle">(per, t0, dur, power)</text>
+  <path class="edge" d="M230 366 H190"/>
+  <text x="210" y="358" class="lbl" text-anchor="middle">verdict</text>
+  <path class="edge" d="M110 402 V440"/>
+
+  <!-- profile dashed configures -->
+  <path class="dash" d="M320 116 V146"/>
+  <path class="dash" d="M550 116 V146"/>
+  <path class="dash" d="M620 116 Q620 280 560 330"/>
+  <text x="640" y="128" class="lbl">configures</text>
+
+  <!-- legend -->
+  <rect x="30" y="540" width="920" height="78" rx="8" fill="#f8fafc" stroke="#e2e8f0"/>
+  <text x="45" y="562" class="stage" font-size="12">Legend</text>
+  <rect x="45" y="574" width="16" height="14" class="core"/><text x="68" y="585" class="sub">core (instrument-agnostic)</text>
+  <rect x="240" y="574" width="16" height="14" class="profile"/><text x="263" y="585" class="sub">profile (swappable)</text>
+  <rect x="420" y="574" width="16" height="14" class="gate"/><text x="443" y="585" class="sub">triage gate (cost gate)</text>
+  <rect x="620" y="574" width="16" height="14" class="term"/><text x="643" y="585" class="sub">terminal (input / output)</text>
+  <rect x="810" y="574" width="16" height="14" class="reject"/><text x="833" y="585" class="sub">early exit</text>
+  <text x="45" y="608" class="sub">Three decision stages = Triage → Search → Vet. "Three-stage" is canonical; never "two-stage". CNN batches wide (GPU); BLS fans across CPU workers (ADR 0008).</text>
+</svg>

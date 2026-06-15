@@ -1,0 +1,33 @@
+# <type>(<scope>): <summary>            <-- max ~72 chars, imperative ("add", not "added")
+#
+# <body: the WHY, not the what. Wrap at ~72. Optional for trivial changes.>
+#
+# Refs: #<issue>   ADR-<n>   F<n>/P<n>/T<n>   (optional)
+# ---------------------------------------------------------------------------
+# Conventional Commits — https://www.conventionalcommits.org
+#
+# type:   feat     a user-facing feature
+#         fix      a bug fix
+#         perf     a performance change
+#         refactor code change that neither fixes a bug nor adds a feature
+#         test     adding or fixing tests
+#         docs     documentation only
+#         chore    tooling, deps, config, repo plumbing
+#         style    formatting only (rare — the formatter usually does this)
+#
+# scope:  the area touched. Common scopes:
+#         triage  search  vet  processor  serving  ml  frontend
+#         docs    roadmap  ci  deps
+#         (omit the scope if it spans many areas)
+#
+# Examples:
+#   feat(vet): add per-candidate vetting CNN
+#   fix(processor): read operating threshold from checkpoint (closes F3)
+#   refactor(ml): promote windowing into spacesight_ml package (ADR-0011)
+#   docs(roadmap): reorder R2 data-fix tasks
+#
+# Notes:
+# - One logical change per commit. PRs squash-merge, so the squash summary
+#   should also follow this format (it becomes the commit on main).
+# - Reference findings (F/P/T) or ADRs in the trailer when a commit closes one,
+#   so history is traceable back to the roadmap and decisions.

@@ -1,191 +1,104 @@
 # API Contract
 
+> **Status note (2026-06-15):** this file previously documented a synchronous
+> `/predict` endpoint that **no longer exists** (the dead `app/main.py`). It has
+> been updated to the real async contract the frontend uses. This file is slated
+> to be **removed or merged** into the canonical design doc at the real repo
+> restructure — see [docs/repo-restructure-and-mlops-plan.md](../docs/repo-restructure-and-mlops-plan.md).
+> Until then, the authoritative API spec is
+> [docs/kepler-system-design.md §4–5](../docs/kepler-system-design.md).
+
 ## Overview
 
-The SpaceSight backend is a FastAPI server that exposes a single synchronous inference endpoint. The frontend posts a raw Kepler light curve file; the backend runs the full pipeline and returns a JSON result payload. There is no async job queue — the response arrives when the pipeline finishes.
+The SpaceSight backend is an **async** FastAPI server. `POST /analyze` accepts a
+light-curve upload, returns a `jobId` immediately, and runs the pipeline in a
+background thread. The frontend then polls `GET /status/{jobId}` until `done`, and
+fetches `GET /results/{jobId}`.
 
-**Base URL (dev):** `http://127.0.0.1:8000`
+**Base URL (dev):** `http://127.0.0.1:8000` (hardcoded in `src/services/api.js`).
 
-**CORS origins allowed:**
-- `http://localhost:5173`
-- `http://localhost:3000`
-- `https://premity.github.io`
+**CORS:** the dev origins (`localhost:5173`, `localhost:3000`) and
+`https://premity.github.io`.
 
 ---
 
 ## Endpoints
 
-### POST /predict
+### POST /analyze
 
-Run the full triage-and-verify pipeline on a single Kepler light curve.
+`multipart/form-data` with one field `file`: a `.npz` (single star) or a `.zip`
+containing up to 20 `.npz` files (multi-star). Each `.npz` must contain `time` and
+`flux` 1-D arrays.
 
-**Request**
+**Response (HTTP 200):**
 
-`multipart/form-data` with one field:
+```json
+{ "jobId": "uuid", "totalStars": 3 }
+```
 
-| Field | Type | Description |
-|---|---|---|
-| `file` | file | `.npz` file containing `time` and `flux` arrays |
+**Errors:** HTTP 400 for a non-`.npz`/`.zip` upload, an empty zip, or a zip
+exceeding 20 stars.
 
-The filename must follow the pattern `KIC_<id>.npz`. The `<id>` portion is parsed as the KIC identifier for catalog lookups.
-
-The `.npz` file must contain:
-- `time` — 1-D float array, Kepler Barycentric Julian Date (BJD − 2454833)
-- `flux` — 1-D float array, raw or pre-normalized flux values matching `time` in length
-
-**Success response — no planet detected (CNN confidence below threshold)**
-
-HTTP 200
+### GET /status/{jobId}
 
 ```json
 {
-  "kic_id": "757450",
-  "cnn_candidate": false,
-  "max_confidence": 0.31,
-  "windows_analyzed": 842,
-  "planets_detected": 0,
-  "detections": [],
-  "detrended_flux": [1.0002, 0.9998, ...],
-  "detrended_time": [131.5122, 131.5338, ...]
+  "stage": "bls_analysis",
+  "stageIndex": 4,
+  "progress": 60,
+  "done": false,
+  "error": null,
+  "currentStar": 2,
+  "currentStarName": "KIC 10593626",
+  "totalStars": 3
 }
 ```
 
-**Success response — planet(s) detected**
+**Stage enum:** `loading → preprocessing → cnn_triage → bls_analysis →
+cnn_vetting → generate_visualizations → done`.
 
-HTTP 200
+> Note: `cnn_triage` and `cnn_vetting` are the **target** stage names (the
+> three-stage architecture). The current backend emits `cnn_inference` and lacks
+> `cnn_vetting`; aligning the enum is a tracked gap (design doc §4.1).
+
+An unknown `jobId` returns `{ "error": "Invalid jobId", "code": 404 }`.
+
+### GET /results/{jobId}
+
+Returns the full nested result once `done`. Shape:
 
 ```json
 {
-  "kic_id": "757450",
-  "cnn_candidate": true,
-  "max_confidence": 0.94,
-  "windows_analyzed": 842,
-  "planets_detected": 2,
-  "detections": [
+  "type": "multi",
+  "totalStars": 3,
+  "totalPlanets": 4,
+  "totalObservationSpan": 0,
+  "totalDataPoints": 0,
+  "stars": [
     {
-      "planet_number": 1,
-      "status": "CONFIRMED_CANDIDATE",
-      "calculated": {
-        "period": 10.3039,
-        "radius": 2.74,
-        "bls_power": 18.43,
-        "duration": 0.1832,
-        "transit_time": 133.8211
-      },
-      "catalog_truth": {
-        "disposition": "CONFIRMED",
-        "nasa_period": 10.3039,
-        "nasa_radius": 2.78
-      },
-      "accuracy_metrics": {
-        "period_error": 0.0001
-      }
-    },
-    {
-      "planet_number": 2,
-      "status": "CONFIRMED_CANDIDATE",
-      "calculated": {
-        "period": 13.0241,
-        "radius": 1.91,
-        "bls_power": 11.72,
-        "duration": 0.1420,
-        "transit_time": 140.1033
-      },
-      "catalog_truth": {
-        "disposition": "CONFIRMED",
-        "nasa_period": 13.0241,
-        "nasa_radius": 1.97
-      },
-      "accuracy_metrics": {
-        "period_error": 0.0002
-      }
+      "id": "…", "name": "KIC 10593626",
+      "planets": [
+        { "id": "…", "orbitalPeriod": 7.05, "transitDepth": 18.4,
+          "estimatedRadius": 1.32, "confidence": "High" }
+      ],
+      "noPlanetConfidence": 0,
+      "lightCurve": [ { "time": 131.51, "flux": 1.0002 } ],
+      "blsPeriodogram": [ { "period": 7.05, "power": 18.4 } ],
+      "observationSpan": 0, "dataPoints": 0
     }
-  ],
-  "detrended_flux": [1.0002, 0.9998, ...],
-  "detrended_time": [131.5122, 131.5338, ...]
+  ]
 }
 ```
 
-**Error response — bad file type**
-
-HTTP 400
-
-```json
-{ "detail": "Invalid file type. Must be an .npz file" }
-```
-
-**Error response — missing arrays**
-
-HTTP 400
-
-```json
-{ "detail": "Data extraction error: Uploaded .npz must contain 'time' and 'flux' arrays." }
-```
+A star that errors without sinking the job appears with an `error` field and empty
+arrays. Before completion, `/results` returns `{ "error": "Job not finished",
+"code": 400 }`.
 
 ---
 
-## Response field reference
+## Frontend integration
 
-### Top-level
-
-| Field | Type | Description |
-|---|---|---|
-| `kic_id` | string | KIC identifier parsed from the filename |
-| `cnn_candidate` | boolean | Whether the CNN confidence exceeded the 0.70 threshold |
-| `max_confidence` | float | Highest sigmoid score across all windows, 0–1 |
-| `windows_analyzed` | integer | Number of 201-cadence windows passed to the CNN |
-| `planets_detected` | integer | Number of planets confirmed by BLS |
-| `detections` | array | One object per confirmed planet (empty if `planets_detected` is 0) |
-| `detrended_flux` | float[] | Full detrended, normalized flux array (same length as raw input) |
-| `detrended_time` | float[] | Corresponding time array in Kepler BJD |
-
-### Detection object
-
-| Field | Type | Description |
-|---|---|---|
-| `planet_number` | integer | Detection order (1-indexed, by BLS iteration) |
-| `status` | string | `CONFIRMED_CANDIDATE`, `CANDIDATE`, `ECLIPSING_BINARY`, or `NOISE_ARTIFACT` |
-| `calculated` | object | BLS-derived orbital parameters |
-| `catalog_truth` | object | Matched NASA KOI entry, if found |
-| `accuracy_metrics` | object | Period error vs. catalog, or `"N/A"` if no catalog match |
-
-### `calculated` object
-
-| Field | Type | Unit | Description |
-|---|---|---|---|
-| `period` | float | days | Best BLS period from summed per-segment power spectra |
-| `radius` | float | R⊕ | Estimated planet radius (transit depth + stellar radius + limb darkening correction of 1.15) |
-| `bls_power` | float | — | Peak combined BLS power (threshold for `CONFIRMED_CANDIDATE` is 7.0) |
-| `duration` | float | days | Transit duration from phase-scan refinement |
-| `transit_time` | float | Kepler BJD | Absolute transit mid-time, used for pre-whitening masking |
-
-### `catalog_truth` object
-
-| Field | Type | Description |
-|---|---|---|
-| `disposition` | string | NASA KOI disposition: `CONFIRMED`, `CANDIDATE`, `FALSE POSITIVE`, or `UNKNOWN` |
-| `nasa_period` | float \| null | Catalog orbital period in days (null if no match within 10%) |
-| `nasa_radius` | float \| null | Catalog planet radius in R⊕ (null if no match) |
-
-### `accuracy_metrics` object
-
-| Field | Type | Description |
-|---|---|---|
-| `period_error` | float \| "N/A" | Absolute difference between detected and catalog period in days |
-
----
-
-## Status classification rules
-
-| Status | Condition |
-|---|---|
-| `ECLIPSING_BINARY` | Estimated radius > 25 R⊕ |
-| `NOISE_ARTIFACT` | Estimated radius < 0.4 R⊕ |
-| `CONFIRMED_CANDIDATE` | BLS power ≥ 7.0 and radius in plausible range |
-| `CANDIDATE` | BLS power < 7.0 but passed the CNN gate |
-
----
-
-## Frontend integration note
-
-`src/services/api.js` currently calls `/analyze`, `/status/{jobId}`, and `/results/{jobId}`, which reflects an earlier async design. Those endpoints do not exist in the current backend. The frontend needs to be updated to call `POST /predict` directly and handle the synchronous response.
+`src/services/api.js` calls `/analyze`, `/status/{jobId}`, `/results/{jobId}`, and
+`src/hooks/usePipeline.js` polls `/status` every 2 s until `done`. This matches the
+contract above. (The earlier note claiming the frontend needed to switch to a
+synchronous `/predict` is obsolete — that endpoint is gone.)
