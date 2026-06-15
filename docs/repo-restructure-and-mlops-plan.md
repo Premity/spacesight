@@ -211,13 +211,32 @@ train-on-push. tmux + W&B gets ~90% of the value at this team size.
 - Nice-to-haves: screenshot/GIF of the results dashboard near the top (capstone
   evaluators read READMEs), link to the W&B project once it exists.
 
+## 6. Repo metadata & GitHub settings (to fix)
+
+GitHub "About"/settings hygiene — quick GUI fixes, plus one real decision:
+
+- **Repo description** — set a one-line description in the GitHub "About" panel
+  (currently empty). Suggested: "AI exoplanet detection from Kepler/TESS light curves
+  (CNN + BLS pipeline)."
+- **Topics / tags** — add GitHub topics for discoverability, e.g. `exoplanets`,
+  `astronomy`, `machine-learning`, `pytorch`, `kepler`, `tess`, `fastapi`, `react`.
+- **License mismatch (decision needed, not just cosmetic).** The `LICENSE` file is
+  **GPL v3**, but the README says **MIT**. These conflict and have real implications
+  (GPL is copyleft; MIT is permissive). The team must decide which is intended, then
+  make the file and the README agree — and confirm GitHub's detected license tag
+  matches. Do not "fix the tag" without settling which license actually governs.
+- **Branch protection** — done (2026-06): an Active ruleset on the default branch
+  requires a PR + 1 approving review, blocks force pushes, and requires linear history.
+  Status-check enforcement is intentionally OFF until CI exists (Phase 3/4); turn it on
+  then. (Self-approval is blocked, so PRs need a teammate's review.)
+
 ---
 
 ## Suggested order of attack
 
 | Phase | Work | Notes |
 |---|---|---|
-| 1 | Branch rename, move + fix `deploy.yml`, un-ignore CLAUDE.md, fix CLAUDE.md staleness | ~30 min of quick wins; removes active hazards. **Rename needs teammate heads-up** (force-push of `origin/main`). |
+| 1 | Branch rename, move + fix `deploy.yml`, un-ignore CLAUDE.md, fix CLAUDE.md staleness, repo metadata (§6: description, topics, **license MIT-vs-GPL decision**) | ~30 min of quick wins; removes active hazards. **Rename needs teammate heads-up** (force-push of `origin/main`). |
 | 2 | Scaffold `ml/`, SSH remote on GPU box, confirm Drive dataset is reachable/downloadable | |
 | 3 | Remote-SSH/Jupyter setup, tmux habit, W&B in the train loop, formatter/lint hooks (style guide) | |
 | 4 | Branch protection, CI, README/CLAUDE.md final pass | |
