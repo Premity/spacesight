@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="620" viewBox="0 0 980 620" font-family="-apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#475569"/>
+    </marker>
+    <style>
+      .transit { fill: #eef2ff; stroke: #6366f1; stroke-width: 1.5; }
+      .atmos { fill: #ecfeff; stroke: #06b6d4; stroke-width: 1.5; }
+      .score { fill: #fef3c7; stroke: #d97706; stroke-width: 1.5; }
+      .ident { fill: #f1f5f9; stroke: #64748b; stroke-width: 1.5; }
+      .report { fill: #dcfce7; stroke: #16a34a; stroke-width: 1.5; }
+      .title { font-size: 16px; font-weight: 700; fill: #1e293b; }
+      .stage { font-size: 13px; font-weight: 700; fill: #1e293b; }
+      .sub { font-size: 10px; fill: #475569; }
+      .lbl { font-size: 10px; fill: #475569; }
+      .edge { stroke: #475569; stroke-width: 1.5; fill: none; marker-end: url(#a); }
+      .link { stroke: #dc2626; stroke-width: 2; fill: none; marker-end: url(#a); }
+    </style>
+  </defs>
+
+  <text x="30" y="32" class="title">JWST extension — two engines, linked by target identity + ephemeris (NOT by a model)</text>
+
+  <!-- Identity layer -->
+  <rect x="30" y="54" width="920" height="52" rx="8" class="ident"/>
+  <text x="45" y="76" class="stage">TARGET IDENTITY — the join key</text>
+  <text x="45" y="94" class="sub">sky coordinates (RA/Dec) + catalogue id — both engines analyse the SAME planet, identified here. Universal across missions.</text>
+
+  <!-- Transit engine -->
+  <rect x="30" y="140" width="430" height="150" rx="8" class="transit"/>
+  <text x="45" y="164" class="stage">TRANSIT ENGINE (the fixed Kepler backend)</text>
+  <text x="45" y="184" class="sub">raw light curve (time, flux)</text>
+  <text x="45" y="200" class="sub">→ Triage → Search (BLS) → Vet</text>
+  <text x="45" y="224" class="stage" font-size="12">Outputs:</text>
+  <text x="45" y="242" class="sub">• is-planet, radius, physics-check verdicts</text>
+  <text x="45" y="260" class="sub">• EPHEMERIS: period P, t0, duration  ◀ load-bearing</text>
+  <text x="45" y="278" class="sub">• orbit + star → equilibrium temperature T_eq</text>
+
+  <!-- Atmosphere engine -->
+  <rect x="520" y="140" width="430" height="150" rx="8" class="atmos"/>
+  <text x="535" y="164" class="stage">ATMOSPHERE ENGINE (new, Rung 1)</text>
+  <text x="535" y="184" class="sub">calibrated JWST time-series spectroscopy</text>
+  <text x="535" y="200" class="sub">→ spectrum extraction (needs ephemeris!)</text>
+  <text x="535" y="216" class="sub">→ molecule CNN</text>
+  <text x="535" y="240" class="stage" font-size="12">Outputs:</text>
+  <text x="535" y="258" class="sub">• transmission spectrum (depth vs wavelength)</text>
+  <text x="535" y="276" class="sub">• molecular abundances {CH4: ppm, O2: ppm, …}</text>
+
+  <!-- the two links -->
+  <path class="link" d="M460 250 H520"/>
+  <text x="490" y="242" class="lbl" text-anchor="middle" fill="#dc2626" font-weight="700">ephemeris</text>
+  <text x="490" y="312" class="lbl" text-anchor="middle" fill="#dc2626" font-weight="700">(the real data link)</text>
+
+  <!-- Scorer -->
+  <rect x="520" y="340" width="430" height="96" rx="8" class="score"/>
+  <text x="535" y="364" class="stage">BIOSIGNATURE SCORER (Rung 0)</text>
+  <text x="535" y="384" class="sub">abundances + T_eq → disequilibrium-pair lookup</text>
+  <text x="535" y="402" class="sub">× temperature filter → biosignature score</text>
+  <text x="535" y="424" class="sub" fill="#b45309">SPECULATIVE layer — clearly flagged (see PRD §framing)</text>
+
+  <!-- T_eq link from transit to scorer -->
+  <path class="link" d="M250 290 V388 H520"/>
+  <text x="300" y="382" class="lbl" fill="#dc2626" font-weight="700">T_eq (orbit constrains habitability)</text>
+
+  <!-- abundances to scorer -->
+  <path class="edge" d="M735 290 V340"/>
+  <text x="745" y="318" class="lbl">abundances</text>
+
+  <!-- Unified report -->
+  <rect x="30" y="480" width="920" height="64" rx="8" class="report"/>
+  <text x="45" y="504" class="stage">UNIFIED PLANET REPORT</text>
+  <text x="45" y="524" class="sub">"Detected here (transit) · characterised here (atmosphere) · scored here (speculative)." One planet, two instruments, one report —</text>
+  <text x="45" y="538" class="sub">exactly how the real workflow links them. There is deliberately NO spectrum-from-light-curve step (physically impossible).</text>
+
+  <path class="edge" d="M245 290 V480"/>
+  <path class="edge" d="M735 436 V480"/>
+
+  <!-- legend -->
+  <text x="30" y="588" class="sub" font-weight="700">Key insight:</text>
+  <text x="110" y="588" class="sub">the engines do NOT share a model or a data pipe. They share the TARGET (same planet) and ONE scalar crossing the boundary:</text>
+  <text x="110" y="604" class="sub">the transit ephemeris (which makes spectrum extraction possible) and T_eq (which gates the biosignature interpretation).</text>
+</svg>

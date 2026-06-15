@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="940" height="430" viewBox="0 0 940 430" font-family="-apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="ra" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#475569"/>
+    </marker>
+    <style>
+      .now { fill: #fee2e2; stroke: #dc2626; stroke-width: 1.5; }
+      .infra { fill: #f1f5f9; stroke: #64748b; stroke-width: 1.5; }
+      .phase { fill: #eef2ff; stroke: #6366f1; stroke-width: 1.5; }
+      .milestone { fill: #dcfce7; stroke: #16a34a; stroke-width: 1.5; }
+      .jwst { fill: #ecfeff; stroke: #06b6d4; stroke-width: 1.5; }
+      .t { font-size: 12px; font-weight: 700; fill: #1e293b; text-anchor: middle; }
+      .s { font-size: 10px; fill: #475569; text-anchor: middle; }
+      .edge { stroke: #475569; stroke-width: 1.8; fill: none; marker-end: url(#ra); }
+      .title { font-size: 15px; font-weight: 700; fill: #1e293b; }
+    </style>
+  </defs>
+
+  <text x="20" y="28" class="title">The whole arc — How to go from here to fixed</text>
+
+  <!-- ROW 1 (L -> R): NOW, P0, R1, R2 -->
+  <g>
+    <rect x="20"  y="60" width="180" height="58" rx="8" class="now"/>
+    <text x="110" y="83" class="t">NOW</text>
+    <text x="110" y="99" class="s">leaky 2-channel model,</text>
+    <text x="110" y="112" class="s">monolithic backend, zero tests</text>
+
+    <rect x="250" y="60" width="150" height="58" rx="8" class="infra"/>
+    <text x="325" y="84" class="t">Phase 0</text>
+    <text x="325" y="101" class="s">Infra + style</text>
+
+    <rect x="450" y="60" width="150" height="58" rx="8" class="phase"/>
+    <text x="525" y="84" class="t">R1</text>
+    <text x="525" y="101" class="s">Truth audit</text>
+
+    <rect x="650" y="60" width="170" height="58" rx="8" class="phase"/>
+    <text x="735" y="84" class="t">R2</text>
+    <text x="735" y="101" class="s">Data fixes + dataset v2</text>
+  </g>
+
+  <!-- ROW 2 (R -> L): R5, R4, R3  (drawn right-to-left order) -->
+  <g>
+    <rect x="650" y="186" width="170" height="58" rx="8" class="phase"/>
+    <text x="735" y="210" class="t">R3</text>
+    <text x="735" y="227" class="s">Training rebuild (triage v2)</text>
+
+    <rect x="450" y="186" width="150" height="58" rx="8" class="phase"/>
+    <text x="525" y="210" class="t">R4</text>
+    <text x="525" y="223" class="s">Three-stage (Vet)</text>
+    <text x="525" y="236" class="s">+ features</text>
+
+    <rect x="250" y="186" width="150" height="58" rx="8" class="phase"/>
+    <text x="325" y="210" class="t">R5</text>
+    <text x="325" y="223" class="s">Research</text>
+    <text x="325" y="236" class="s">(injection, TESS)</text>
+  </g>
+
+  <!-- ROW 3 (L -> R): R6, FIXED, JWST -->
+  <g>
+    <rect x="250" y="312" width="150" height="58" rx="8" class="phase"/>
+    <text x="325" y="336" class="t">R6</text>
+    <text x="325" y="353" class="s">Throughput + stretch</text>
+
+    <rect x="450" y="312" width="170" height="58" rx="8" class="milestone"/>
+    <text x="535" y="336" class="t">FIXED KEPLER</text>
+    <text x="535" y="353" class="s">the foundation</text>
+
+    <rect x="670" y="312" width="150" height="58" rx="8" class="jwst"/>
+    <text x="745" y="336" class="t">JWST overlay</text>
+    <text x="745" y="353" class="s">(separate PRD)</text>
+  </g>
+
+  <!-- row 1 edges L->R -->
+  <path class="edge" d="M200 89 H250"/>
+  <path class="edge" d="M400 89 H450"/>
+  <path class="edge" d="M600 89 H650"/>
+  <!-- drop from R2 (row1 right) down to R3 (row2 right) -->
+  <path class="edge" d="M735 118 V186"/>
+  <!-- row 2 edges R->L -->
+  <path class="edge" d="M650 215 H600"/>
+  <path class="edge" d="M450 215 H400"/>
+  <!-- drop from R5 (row2 left) down to R6 (row3 left) -->
+  <path class="edge" d="M325 244 V312"/>
+  <!-- row 3 edges L->R -->
+  <path class="edge" d="M400 341 H450"/>
+  <path class="edge" d="M620 341 H670"/>
+
+  <!-- parallel notes -->
+  <text x="20" y="404" class="s" style="text-anchor:start; font-weight:700;">Parallel:</text>
+  <text x="78" y="404" class="s" style="text-anchor:start;">Phase 0 runs alongside R1. JWST Rung 0 + Rung 1 R&amp;D can start any time (decoupled); only JWST integration waits on FIXED KEPLER.</text>
+</svg>
