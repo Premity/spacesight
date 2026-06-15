@@ -15,8 +15,8 @@ build/
 !test_data/*.npz
 !test_data/*.zip
 temp_*
-CLAUDE.md
 
-# Training notebooks: research not yet published — do not commit until the team
-# decides to (see docs/ROADMAP.md / docs/repo-restructure-and-mlops-plan.md)
-ml/
+# ml/ training notebooks + package are tracked. The dataset and weights are NOT
+# (large; live on Drive — see ml/README.md). *.npz and models/*.pt above cover those;
+# guard the data dir explicitly too:
+ml/data/
