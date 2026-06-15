@@ -4,7 +4,26 @@ AI-powered exoplanet detection from Kepler Space Telescope light curves.
 
 **Live Demo:** [https://premity.github.io/spacesight](https://premity.github.io/spacesight)
 
-SpaceSight runs a two-stage triage-and-verify pipeline on raw Kepler photometric data. A 2-channel InceptionResNet1D CNN screens each star for transit candidates; only those that pass the CNN threshold proceed to iterative Box Least Squares (BLS) analysis, which determines orbital periods and estimated planet radii. Results are presented in an interactive dashboard with per-star light curves, BLS periodograms, orbital diagrams, and planet size comparisons.
+SpaceSight runs a triage-and-verify pipeline on raw Kepler photometric data. An InceptionResNet1D CNN screens each star for transit candidates; only those that pass the CNN threshold proceed to iterative Box Least Squares (BLS) analysis, which determines orbital periods and estimated planet radii. Results are presented in an interactive dashboard with per-star light curves, BLS periodograms, orbital diagrams, and planet size comparisons.
+
+---
+
+## Documentation
+
+This README is the **getting-started / how-to-run** guide. For understanding the
+system, the roadmap, and how to contribute, **start at [docs/README.md](docs/README.md)** —
+it's the documentation hub, with a guided reading order and a map of every doc.
+
+Quick links:
+- **[docs/README.md](docs/README.md)** — documentation index + "start here" reading path
+- **[docs/kepler-system-design.md](docs/kepler-system-design.md)** — the canonical system design (target state)
+- **[docs/ROADMAP.md](docs/ROADMAP.md)** — the ordered task list (what's being built, in what order)
+- **[docs/style-guide.md](docs/style-guide.md)** — code & notebook conventions (read before contributing)
+- **[docs/adr/](docs/adr/)** — architecture decision records (the *why*)
+- **[CONTEXT.md](CONTEXT.md)** — glossary · **[CLAUDE.md](CLAUDE.md)** — what currently exists (agent guide)
+
+Other readmes live next to what they document: **[ml/README.md](ml/README.md)** (how to
+train) and **[ml/MODELS.md](ml/MODELS.md)** (the model registry).
 
 ---
 
