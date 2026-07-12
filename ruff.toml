@@ -11,3 +11,7 @@ select = [
   "I",        # isort (import ordering)
   "UP",       # pyupgrade (modern Python syntax)
 ]
+
+[lint.extend-per-file-ignores]
+# FastAPI's dependency-injection idiom uses calls in argument defaults (File(...), Depends(...)).
+"spacesight-backend/main.py" = ["B008"]
