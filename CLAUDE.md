@@ -60,13 +60,11 @@ The pipeline runs in three stages:
 
 - `POST /analyze` — accepts a `.npz` or multi-star `.zip` upload, returns `{ "jobId": "uuid", "totalStars": N }`
 - `GET /status/{jobId}` — returns `{ stage, stageIndex, progress, done, error, currentStar, currentStarName, totalStars }`
-- `GET /results/{jobId}` — returns the full nested result schema (see `spacesight-frontend/API_REQUIREMENTS.md`)
+- `GET /results/{jobId}` — returns the full nested result schema (authoritative contract: [docs/kepler-system-design.md](docs/kepler-system-design.md) §4–5)
 
 Stage enum (current): `start → loading → preprocessing → cnn_inference → bls_analysis → generate_visualizations → done`. (The target enum renames `cnn_inference` → `cnn_triage` and inserts `cnn_vetting` — see design doc §4.1.)
 
 Multi-star zip uploads are processed sequentially with per-star progress; a single failing star is reported with an `error` field without sinking the job.
-
-> **Dead entrypoint:** `spacesight-backend/app/main.py` is an obsolete synchronous `/predict` server (it tries to load a nonexistent `.keras` file). It is not wired to anything. The live app is the root `main.py`. Slated for deletion at the restructure.
 
 ## Frontend (spacesight-frontend/)
 

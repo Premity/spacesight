@@ -1,0 +1,13 @@
+# Python format + lint config — see docs/style-guide.md §Enforcement.
+line-length = 120
+
+# Notebooks are not policed (style guide); exploration code stays free-form.
+extend-exclude = ["*.ipynb"]
+
+[lint]
+select = [
+  "E", "F",   # pyflakes + pycodestyle errors
+  "B",        # flake8-bugbear (likely bugs)
+  "I",        # isort (import ordering)
+  "UP",       # pyupgrade (modern Python syntax)
+]

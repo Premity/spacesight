@@ -1,0 +1,8 @@
+{
+  "include": ["spacesight-backend", "ml/src"],
+  "exclude": ["**/__pycache__", "**/node_modules", "ml/data"],
+  "typeCheckingMode": "basic",
+  "reportMissingImports": "warning",
+  "reportMissingModuleSource": "none",
+  "pythonVersion": "3.12"
+}
