@@ -1,18 +1,18 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from uuid import uuid4
-import shutil
 import os
 import re
-import zipfile
+import shutil
 import threading
+import zipfile
+from uuid import uuid4
+
 import numpy as np
 import pandas as pd
 import torch
-from astropy.timeseries import BoxLeastSquares
-
 from app.model_def import InceptionResNet1D
 from app.processor import ExoplanetProcessor
+from astropy.timeseries import BoxLeastSquares
+from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 
 MAX_STARS_PER_JOB = 20
 
@@ -52,15 +52,18 @@ def _lttb(time: np.ndarray, flux: np.ndarray, n_out: int) -> tuple[np.ndarray, n
     idx.append(n - 1)
     return time[idx], flux[idx]
 
+
 app = FastAPI()
 
 # -------------------------------
 # ROOT (for testing)
 # -------------------------------
 
+
 @app.get("/")
 def root():
     return {"message": "SpaceSight backend is running"}
+
 
 # -------------------------------
 # CORS (VERY IMPORTANT)
@@ -83,13 +86,13 @@ MODEL_PATH = "models/exoplanet_cnn_model.pt"
 CATALOG_PATH = "data/koi_cumulative.csv"
 
 CONFIG = {
-    'sigma_clip': 5.0,
-    'gap_threshold_hrs': 24.0,
-    'wh_lambda': 1e9,
-    'wh_asymmetric_iters': 10,
-    'window_length': 201,
-    'stride': 50,
-    'min_valid_frac': 0.90,
+    "sigma_clip": 5.0,
+    "gap_threshold_hrs": 24.0,
+    "wh_lambda": 1e9,
+    "wh_asymmetric_iters": 10,
+    "window_length": 201,
+    "stride": 50,
+    "min_valid_frac": 0.90,
 }
 
 # -------------------------------
@@ -102,7 +105,7 @@ STAGE_MAP = {
     "cnn_inference": 4,
     "bls_analysis": 5,
     "generate_visualizations": 6,
-    "done": 7
+    "done": 7,
 }
 
 # -------------------------------
@@ -110,48 +113,40 @@ STAGE_MAP = {
 # -------------------------------
 model = InceptionResNet1D(in_channels=2, nb_filters=32)
 checkpoint = torch.load(MODEL_PATH, map_location="cpu")
-model.load_state_dict(checkpoint['model_state_dict'])
+model.load_state_dict(checkpoint["model_state_dict"])
 model.eval()
 
 catalog_df = pd.read_csv(CATALOG_PATH)
+
 
 # -------------------------------
 # PER-STAR ANALYSIS
 # -------------------------------
 def analyze_one_star(job_id, star_index, star_name, raw_time, raw_flux, progress_cb):
     """Run the full pipeline for a single star and return the formatted star dict."""
-    kic_match = re.search(r'\d+', star_name)
+    kic_match = re.search(r"\d+", star_name)
     kic_id = kic_match.group(0) if kic_match else star_name
 
-    processor = ExoplanetProcessor(
-        model,
-        catalog_df,
-        config=CONFIG,
-        cnn_threshold=0.70,
-        bls_threshold=4.0
-    )
+    processor = ExoplanetProcessor(model, catalog_df, config=CONFIG, cnn_threshold=0.70, bls_threshold=4.0)
 
-    result = processor.analyze_raw_lightcurve(
-        kic_id,
-        raw_time,
-        raw_flux,
-        progress_callback=progress_cb
-    )
+    result = processor.analyze_raw_lightcurve(kic_id, raw_time, raw_flux, progress_callback=progress_cb)
 
     # -------- FORMAT PLANETS --------
     planets = []
     for i, p in enumerate(result.get("detections", [])):
-        planet_letter = chr(ord('b') + i)
+        planet_letter = chr(ord("b") + i)
         planet_id = f"{star_name} {planet_letter}"
         if "catalog_match" in p:
             planet_id = p["catalog_match"].get("id", planet_id)
-        planets.append({
-            "id": planet_id,
-            "orbitalPeriod": round(p["calculated"]["period"], 2),
-            "transitDepth": round(p["calculated"]["bls_power"], 4),
-            "estimatedRadius": round(p["calculated"]["radius"], 2),
-            "confidence": "High" if p["calculated"]["bls_power"] > 10 else "Low"
-        })
+        planets.append(
+            {
+                "id": planet_id,
+                "orbitalPeriod": round(p["calculated"]["period"], 2),
+                "transitDepth": round(p["calculated"]["bls_power"], 4),
+                "estimatedRadius": round(p["calculated"]["radius"], 2),
+                "confidence": "High" if p["calculated"]["bls_power"] > 10 else "Low",
+            }
+        )
 
     progress_cb("generate_visualizations", 90)
 
@@ -175,10 +170,7 @@ def analyze_one_star(job_id, star_index, star_name, raw_time, raw_flux, progress
     normalized_flux = normalized_flux + noise
 
     ds_time, ds_flux = _lttb(valid_time, normalized_flux, n_out=2000)
-    lightCurve = [
-        {"time": round(float(t), 4), "flux": round(float(f), 6)}
-        for t, f in zip(ds_time, ds_flux)
-    ]
+    lightCurve = [{"time": round(float(t), 4), "flux": round(float(f), 6)} for t, f in zip(ds_time, ds_flux)]
 
     # -------- PERIODOGRAM --------
     valid = ~np.isnan(raw_flux)
@@ -244,26 +236,26 @@ def run_pipeline(job_id, star_inputs, cleanup_paths):
                     raw_time = data["time"].copy()
                     raw_flux = data["flux"].copy()
 
-                star_dict = analyze_one_star(
-                    job_id, idx + 1, star_name, raw_time, raw_flux, progress_cb
-                )
+                star_dict = analyze_one_star(job_id, idx + 1, star_name, raw_time, raw_flux, progress_cb)
                 formatted_stars.append(star_dict)
             except Exception as star_err:
                 msg = f"{star_name}: {star_err}"
                 print(f"⚠️ Star failed — {msg}")
                 per_star_errors.append(msg)
-                formatted_stars.append({
-                    "id": f"{job_id}-{idx + 1}",
-                    "name": star_name,
-                    "planets": [],
-                    "noPlanetConfidence": 0,
-                    "lightCurve": [],
-                    "blsPeriodogram": [],
-                    "orbitalParams": {},
-                    "observationSpan": 0,
-                    "dataPoints": 0,
-                    "error": str(star_err),
-                })
+                formatted_stars.append(
+                    {
+                        "id": f"{job_id}-{idx + 1}",
+                        "name": star_name,
+                        "planets": [],
+                        "noPlanetConfidence": 0,
+                        "lightCurve": [],
+                        "blsPeriodogram": [],
+                        "orbitalParams": {},
+                        "observationSpan": 0,
+                        "dataPoints": 0,
+                        "error": str(star_err),
+                    }
+                )
 
         # -------- AGGREGATE --------
         total_planets = sum(len(s["planets"]) for s in formatted_stars)
@@ -333,10 +325,7 @@ async def analyze(file: UploadFile = File(...)):
             os.makedirs(extract_dir, exist_ok=True)
 
             with zipfile.ZipFile(upload_path, "r") as zf:
-                npz_members = [
-                    n for n in zf.namelist()
-                    if n.lower().endswith(".npz") and not n.startswith("__MACOSX/")
-                ]
+                npz_members = [n for n in zf.namelist() if n.lower().endswith(".npz") and not n.startswith("__MACOSX/")]
                 if not npz_members:
                     raise HTTPException(status_code=400, detail="Zip contains no .npz files")
                 if len(npz_members) > MAX_STARS_PER_JOB:
@@ -369,7 +358,7 @@ async def analyze(file: UploadFile = File(...)):
                     shutil.rmtree(path, ignore_errors=True)
                 else:
                     os.remove(path)
-        raise HTTPException(status_code=400, detail=f"Could not read upload: {e}")
+        raise HTTPException(status_code=400, detail=f"Could not read upload: {e}") from e
 
     jobs[job_id] = {
         "stage": "start",
@@ -385,6 +374,7 @@ async def analyze(file: UploadFile = File(...)):
     thread.start()
 
     return {"jobId": job_id, "totalStars": len(star_inputs)}
+
 
 # -------------------------------
 # ENDPOINT: STATUS
@@ -406,6 +396,7 @@ def status(job_id: str):
         "currentStarName": job.get("current_star_name"),
         "totalStars": job.get("total_stars", 1),
     }
+
 
 # -------------------------------
 # ENDPOINT: RESULTS
