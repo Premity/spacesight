@@ -1,12 +1,12 @@
-import { useState, useEffect, useRef } from 'react';
-import { getPipelineStatus, getResults } from '../services/api';
+import { useState, useEffect, useRef } from "react";
+import { getPipelineStatus, getResults } from "../services/api";
 
 const STEP_DELAY_MS = 600;
 
 export function usePipeline(jobId) {
   const [pipelineState, setPipelineState] = useState({
     stageIndex: 0,
-    status: 'idle',
+    status: "idle",
     progress: 0,
     results: null,
     error: null,
@@ -32,7 +32,7 @@ export function usePipeline(jobId) {
 
     setPipelineState({
       stageIndex: 0,
-      status: 'processing',
+      status: "processing",
       progress: 0,
       results: null,
       error: null,
@@ -47,10 +47,10 @@ export function usePipeline(jobId) {
         const next = displayedStageRef.current;
         const isDone = doneRef.current && next >= targetStageRef.current;
 
-        setPipelineState(prev => ({
+        setPipelineState((prev) => ({
           ...prev,
           stageIndex: next,
-          status: isDone ? 'done' : 'processing',
+          status: isDone ? "done" : "processing",
           progress: isDone ? 100 : prev.progress,
           results: isDone ? resultsRef.current : prev.results,
         }));
@@ -81,7 +81,7 @@ export function usePipeline(jobId) {
           targetStageRef.current = res.stageIndex;
         }
 
-        setPipelineState(prev => ({
+        setPipelineState((prev) => ({
           ...prev,
           progress: res.progress,
           currentStar: res.currentStar ?? prev.currentStar,
@@ -93,7 +93,7 @@ export function usePipeline(jobId) {
         if (res.error) {
           clearInterval(pollInterval);
           clearInterval(stepInterval);
-          setPipelineState(prev => ({ ...prev, status: 'error', error: res.error }));
+          setPipelineState((prev) => ({ ...prev, status: "error", error: res.error }));
           return;
         }
 
@@ -107,7 +107,7 @@ export function usePipeline(jobId) {
       } catch (err) {
         clearInterval(pollInterval);
         clearInterval(stepInterval);
-        setPipelineState(prev => ({ ...prev, status: 'error', error: err.message }));
+        setPipelineState((prev) => ({ ...prev, status: "error", error: err.message }));
       }
     }, 2000);
 

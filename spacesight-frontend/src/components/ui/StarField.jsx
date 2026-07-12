@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo } from "react";
 
 const generateStars = (count) => {
   let stars = [];
@@ -8,7 +8,7 @@ const generateStars = (count) => {
     const opacity = Math.random() * 0.5 + 0.5;
     stars.push(`${x}px ${y}px rgba(255, 255, 255, ${opacity})`);
   }
-  return stars.join(', ');
+  return stars.join(", ");
 };
 
 export default function StarField() {

@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 
 const TOOLTIP_WIDTH = 280;
 const OFFSET_X = 14;
@@ -48,15 +48,16 @@ export default function InfoTooltip({ text, delay = 600, children }) {
       >
         {children}
       </span>
-      {visible && createPortal(
-        <div
-          className="fixed z-[9999] bg-[#0d0d1a] border border-space-purple/50 text-space-text/90 text-xs rounded-xl px-3 py-2 shadow-[0_0_20px_rgba(124,58,237,0.3)] pointer-events-none leading-relaxed"
-          style={{ left: pos.x, top: pos.y, width: TOOLTIP_WIDTH }}
-        >
-          {text}
-        </div>,
-        document.body
-      )}
+      {visible &&
+        createPortal(
+          <div
+            className="fixed z-[9999] bg-[#0d0d1a] border border-space-purple/50 text-space-text/90 text-xs rounded-xl px-3 py-2 shadow-[0_0_20px_rgba(124,58,237,0.3)] pointer-events-none leading-relaxed"
+            style={{ left: pos.x, top: pos.y, width: TOOLTIP_WIDTH }}
+          >
+            {text}
+          </div>,
+          document.body,
+        )}
     </>
   );
 }

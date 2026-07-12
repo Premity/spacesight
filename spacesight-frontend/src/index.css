@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -6,16 +6,22 @@
 
 @layer base {
   :root {
-    --font-orbitron: 'Orbitron', sans-serif;
-    --font-inter: 'Inter', sans-serif;
+    --font-orbitron: "Orbitron", sans-serif;
+    --font-inter: "Inter", sans-serif;
   }
-  
+
   body {
     @apply bg-space-bg text-space-text;
     font-family: var(--font-inter);
   }
 
-  h1, h2, h3, h4, h5, h6, .font-display {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  .font-display {
     font-family: var(--font-orbitron);
   }
 }
