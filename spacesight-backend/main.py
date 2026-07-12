@@ -53,6 +53,29 @@ def _lttb(time: np.ndarray, flux: np.ndarray, n_out: int) -> tuple[np.ndarray, n
     return time[idx], flux[idx]
 
 
+def _build_lightcurve(vis_time: np.ndarray, vis_flux: np.ndarray, n_out: int = 2000) -> list[dict]:
+    """Normalize, downsample, and serialize a flux series for the frontend chart.
+
+    Used for every star — including triage-rejected and errored ones — so the user
+    always sees their light curve even when no planets are found.
+    """
+    valid_mask = ~np.isnan(vis_flux)
+    valid_time = vis_time[valid_mask]
+    valid_flux = vis_flux[valid_mask]
+    if len(valid_flux) == 0:
+        return []
+
+    flux_median = np.nanmedian(valid_flux)
+    normalized_flux = valid_flux / flux_median if flux_median > 0 else valid_flux
+
+    np.random.seed(42)
+    noise = np.random.normal(0, 0.0005, len(normalized_flux))
+    normalized_flux = normalized_flux + noise
+
+    ds_time, ds_flux = _lttb(valid_time, normalized_flux, n_out=n_out)
+    return [{"time": round(float(t), 4), "flux": round(float(f), 6)} for t, f in zip(ds_time, ds_flux, strict=True)]
+
+
 app = FastAPI()
 
 # -------------------------------
@@ -158,21 +181,7 @@ def analyze_one_star(job_id, star_index, star_name, raw_time, raw_flux, progress
         vis_flux = raw_flux
         vis_time = raw_time
 
-    valid_mask = ~np.isnan(vis_flux)
-    valid_time = vis_time[valid_mask]
-    valid_flux = vis_flux[valid_mask]
-
-    flux_median = np.nanmedian(valid_flux)
-    normalized_flux = valid_flux / flux_median if flux_median > 0 else valid_flux
-
-    np.random.seed(42)
-    noise = np.random.normal(0, 0.0005, len(normalized_flux))
-    normalized_flux = normalized_flux + noise
-
-    ds_time, ds_flux = _lttb(valid_time, normalized_flux, n_out=2000)
-    lightCurve = [
-        {"time": round(float(t), 4), "flux": round(float(f), 6)} for t, f in zip(ds_time, ds_flux, strict=True)
-    ]
+    lightCurve = _build_lightcurve(vis_time, vis_flux)
 
     # -------- PERIODOGRAM --------
     valid = ~np.isnan(raw_flux)
@@ -233,6 +242,7 @@ def run_pipeline(job_id, star_inputs, cleanup_paths):
                 jobs[job_id]["progress"] = pct
                 print(f"[{job_id}] Star {_idx + 1}/{total}: {_name} — {stage} {pct}%")
 
+            raw_time = raw_flux = None
             try:
                 with np.load(npz_path, allow_pickle=True) as data:
                     raw_time = data["time"].copy()
@@ -244,17 +254,29 @@ def run_pipeline(job_id, star_inputs, cleanup_paths):
                 msg = f"{star_name}: {star_err}"
                 print(f"⚠️ Star failed — {msg}")
                 per_star_errors.append(msg)
+
+                # Best-effort: even for a failed star, show the raw light curve so the
+                # user sees their data instead of an empty panel.
+                fallback_lightcurve = []
+                if raw_time is not None and raw_flux is not None and len(raw_time) == len(raw_flux):
+                    try:
+                        fallback_lightcurve = _build_lightcurve(raw_time, raw_flux)
+                    except Exception:
+                        pass
+
                 formatted_stars.append(
                     {
                         "id": f"{job_id}-{idx + 1}",
                         "name": star_name,
                         "planets": [],
                         "noPlanetConfidence": 0,
-                        "lightCurve": [],
+                        "lightCurve": fallback_lightcurve,
                         "blsPeriodogram": [],
                         "orbitalParams": {},
-                        "observationSpan": 0,
-                        "dataPoints": 0,
+                        "observationSpan": round(float(raw_time[-1] - raw_time[0]), 2)
+                        if raw_time is not None and len(raw_time) > 0
+                        else 0,
+                        "dataPoints": len(raw_time) if raw_time is not None else 0,
                         "error": str(star_err),
                     }
                 )

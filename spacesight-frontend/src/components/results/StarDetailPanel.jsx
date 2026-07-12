@@ -16,7 +16,20 @@ export default function StarDetailPanel({ star }) {
 
   return (
     <div className="flex flex-col gap-10 w-full animate-fade-in relative z-10 pt-4 pb-12">
-      {star.planets.length === 0 ? (
+      {star.error ? (
+        <div className="w-full bg-red-500/5 border border-red-500/30 rounded-3xl p-10 md:p-14 text-center shadow-[0_0_30px_rgba(239,68,68,0.1)] backdrop-blur-md flex flex-col items-center">
+          <h3 className="text-red-400 font-orbitron font-bold text-2xl md:text-3xl mb-4 drop-shadow-sm">
+            Analysis Failed for This Target
+          </h3>
+          <p className="text-red-400/80 text-lg md:text-xl font-light max-w-3xl mx-auto leading-relaxed">
+            The pipeline could not analyze{" "}
+            <span className="font-mono bg-red-500/10 px-3 py-1 rounded inline-block text-red-300 ml-1 border border-red-500/20">
+              {star.name}
+            </span>
+            . <span className="font-mono text-base block mt-3 text-red-300/70">{star.error}</span>
+          </p>
+        </div>
+      ) : star.planets.length === 0 ? (
         <div className="w-full bg-yellow-500/5 border border-yellow-500/30 rounded-3xl p-10 md:p-14 text-center shadow-[0_0_30px_rgba(234,179,8,0.1)] backdrop-blur-md flex flex-col items-center">
           <svg
             className="w-16 h-16 text-yellow-500/80 mb-6 drop-shadow-md"
