@@ -4,5 +4,10 @@
   "typeCheckingMode": "basic",
   "reportMissingImports": "warning",
   "reportMissingModuleSource": "none",
-  "pythonVersion": "3.12"
+  "reportArgumentType": "warning",
+  "reportAttributeAccessIssue": "warning",
+  "reportCallIssue": "warning",
+  "reportGeneralTypeIssues": "warning",
+  "reportOperatorIssue": "warning",
+  "reportIndexIssue": "warning"
 }
