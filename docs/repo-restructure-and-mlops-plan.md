@@ -1,6 +1,8 @@
 # Repo Restructure, Git Strategy & MLOps Plan
 
-Status: **proposal — nothing implemented yet** (drafted 2026-06-11).
+Status: **largely implemented** (drafted 2026-06-11; §1–§2 git/CI/tooling landed 2026-07-13 —
+remaining: Drive download docs, W&B integration at the R3 train loop, CI status-check
+enforcement once green runs exist).
 
 Goal: bring model training (notebooks + dataset workflow) into this repo, fix the git
 landmines, replace the AnyDesk-based training workflow, and refresh CLAUDE.md / README.
@@ -220,11 +222,10 @@ GitHub "About"/settings hygiene — quick GUI fixes, plus one real decision:
   (CNN + BLS pipeline)."
 - **Topics / tags** — add GitHub topics for discoverability, e.g. `exoplanets`,
   `astronomy`, `machine-learning`, `pytorch`, `kepler`, `tess`, `fastapi`, `react`.
-- **License mismatch (decision needed, not just cosmetic).** The `LICENSE` file is
-  **GPL v3**, but the README says **MIT**. These conflict and have real implications
-  (GPL is copyleft; MIT is permissive). The team must decide which is intended, then
-  make the file and the README agree — and confirm GitHub's detected license tag
-  matches. Do not "fix the tag" without settling which license actually governs.
+- **License mismatch — resolved (2026-07-13): GPL v3 governs.** Decided deliberately
+  (copyleft protects the research from closed-source reuse). The README now says
+  GPL-3.0, matching the `LICENSE` file; GitHub's detected license tag should read
+  GPL-3.0 automatically.
 - **Branch protection** — done (2026-06): an Active ruleset on the default branch
   requires a PR + 1 approving review, blocks force pushes, and requires linear history.
   Status-check enforcement is intentionally OFF until CI exists (Phase 3/4); turn it on

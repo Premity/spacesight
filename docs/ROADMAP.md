@@ -13,7 +13,7 @@ It does *not* re-explain the architectural decisions — those live in
 decision is the ADRs; the detailed code/notebook findings are the appendix (§F/§P/§T
 below).
 
-Last updated 2026-06-15.
+Last updated 2026-07-13 (Phase 0 largely done — see checkboxes).
 
 ---
 
@@ -41,24 +41,24 @@ ADRs ([0001–0011](adr/)).
 From [repo-restructure-and-mlops-plan.md](repo-restructure-and-mlops-plan.md) and
 [style-guide.md](style-guide.md).
 
-- [ ] Rename `master` → `main`; force-push `origin/main` (coordinate with the team
+- [x] Rename `master` → `main`; force-push `origin/main` (coordinate with the team
       first); set default branch; delete `origin/master`.
-- [ ] Move `spacesight-frontend/.github/workflows/deploy.yml` to repo-root
+- [x] Move `spacesight-frontend/.github/workflows/deploy.yml` to repo-root
       `.github/workflows/`; retarget trigger to `main`. (It never fires today — wrong
       directory.) **Add `working-directory: spacesight-frontend`** (or per-step `cd`):
       the workflow currently relies on its physical location for cwd, so `npm install`
       / `npm run build` will break from repo root without it.
-- [ ] Un-ignore `CLAUDE.md`; commit it.
-- [ ] Scaffold `ml/`: `notebooks/`, `src/spacesight_ml/`, `configs/`, gitignored
+- [x] Un-ignore `CLAUDE.md`; commit it.
+- [x] Scaffold `ml/`: `notebooks/`, `src/spacesight_ml/`, `configs/`, gitignored
       `data/`.
 - [ ] Confirm the Drive dataset is reachable; document how to download the needed
       subset (no DVC — see restructure plan).
-- [ ] Adopt tooling: `ruff.toml` (per style guide), `.prettierrc`
+- [x] Adopt tooling: `ruff.toml` (per style guide), `.prettierrc`
       (`{ "printWidth": 120 }`), Pyright (CI lenient), pre-commit hooks (Ruff +
       Prettier), CI gate (Ruff lint + Pyright + frontend lint/build).
-- [ ] One-time `style: apply formatters repo-wide` sweep; add `.git-blame-ignore-revs`.
+- [x] One-time `style: apply formatters repo-wide` sweep; add `.git-blame-ignore-revs`.
 - [ ] W&B in the (future) train loop; tmux habit for long runs.
-- [ ] Delete dead `spacesight-backend/app/main.py`. Retire
+- [x] Delete dead `spacesight-backend/app/main.py`. Retire
       `spacesight-frontend/API_REQUIREMENTS.md` — the authoritative API contract now
       lives in design doc §4–5 (which fully absorbed it); delete once the team has
       migrated any links.

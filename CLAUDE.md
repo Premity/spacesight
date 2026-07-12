@@ -13,7 +13,20 @@ SpaceSight is a two-part application for detecting exoplanet candidates in Keple
 ```
 spacesight-backend/   # Python FastAPI backend
 spacesight-frontend/  # React + Vite + Tailwind frontend
+ml/                   # Training: notebooks/ (research), src/spacesight_ml/ (package), configs/, gitignored data/
+docs/                 # Design docs, ROADMAP, ADRs — start at docs/README.md
+.github/workflows/    # CI (lint/type/build gates) + GitHub Pages deploy
 ```
+
+The dataset (~10 GB) lives on Google Drive, never in git — see [ml/README.md](ml/README.md). Model weights follow the Drive + git-tag + [ml/MODELS.md](ml/MODELS.md) scheme.
+
+## Tooling
+
+- **Python**: Ruff (format + lint, config in `ruff.toml`), Pyright lenient (`pyrightconfig.json`). Line length 120.
+- **Frontend**: Prettier (`.prettierrc`) + ESLint.
+- **Pre-commit hooks**: `.pre-commit-config.yaml` (install once: `uvx pre-commit install`).
+- **CI** (`.github/workflows/ci.yml`): Ruff lint + Pyright + frontend lint/build on every PR. Formatting never blocks; lint/type/build failures do.
+- Commit style: Conventional Commits (`.gitmessage`); PRs squash-merge to `main`.
 
 ## Backend (spacesight-backend/)
 
@@ -82,7 +95,7 @@ npm run preview    # Preview production build locally
 ### Architecture
 
 - **Routing**: `HashRouter` (required for GitHub Pages static hosting) with three routes: `/` (Home), `/analyze` (Upload), `/results` (Results).
-- **Global state**: `AppContext` (`src/context/AppContext.jsx`) holds `results` — the raw API response — shared between AnalyzePage and ResultsPage.
+- **Global state**: `AppContext` (`src/context/AppContext.jsx`; provider in `src/context/AppProvider.jsx`) holds `results` — the raw API response — shared between AnalyzePage and ResultsPage.
 - **API layer**: `src/services/api.js` — `BASE_URL` is hardcoded to `http://127.0.0.1:8000`. Update this for production deployments.
 - **Polling**: `src/hooks/usePipeline.js` polls `/status` every 2 seconds until `done: true`, then fetches `/results`.
 - **Charts**: Recharts library renders the light curve and BLS periodogram.
@@ -90,7 +103,7 @@ npm run preview    # Preview production build locally
 
 ### Deployment
 
-The frontend deploys to GitHub Pages via `.github/workflows/deploy.yml` on push to `master`. The workflow runs inside `spacesight-frontend/` (note: the workflow `working-directory` is not set — `npm install` and `npm run build` must be run from within that directory).
+The frontend deploys to GitHub Pages via `.github/workflows/deploy.yml` (repo root) on push to `main`. The workflow sets `working-directory: spacesight-frontend` for its npm steps.
 
 ## Input Format
 
