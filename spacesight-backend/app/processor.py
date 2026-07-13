@@ -294,7 +294,7 @@ class ExoplanetProcessor:
         clean_flux_full = np.array([])  # full array for CNN windowing
         segments = []  # per-segment pairs for BLS
 
-        for t_seg, f_seg in zip(time_segments, flux_segments):
+        for t_seg, f_seg in zip(time_segments, flux_segments, strict=True):
             if len(f_seg) < 100:
                 clean_flux_full = np.concatenate([clean_flux_full, np.full_like(f_seg, np.nan)])
                 continue
@@ -409,7 +409,7 @@ class ExoplanetProcessor:
 
             best_period = None
             tlo, thi = wtime[0], wtime[-1]
-            for tm, dur, P in zip(ttimes, tdurs, tperiods):
+            for tm, dur, P in zip(ttimes, tdurs, tperiods, strict=True):
                 buffer = buf_frac * dur
                 if tlo - buffer < tm < thi + buffer:
                     best_period = P

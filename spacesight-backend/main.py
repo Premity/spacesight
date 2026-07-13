@@ -170,7 +170,9 @@ def analyze_one_star(job_id, star_index, star_name, raw_time, raw_flux, progress
     normalized_flux = normalized_flux + noise
 
     ds_time, ds_flux = _lttb(valid_time, normalized_flux, n_out=2000)
-    lightCurve = [{"time": round(float(t), 4), "flux": round(float(f), 6)} for t, f in zip(ds_time, ds_flux)]
+    lightCurve = [
+        {"time": round(float(t), 4), "flux": round(float(f), 6)} for t, f in zip(ds_time, ds_flux, strict=True)
+    ]
 
     # -------- PERIODOGRAM --------
     valid = ~np.isnan(raw_flux)
@@ -185,7 +187,7 @@ def analyze_one_star(job_id, star_index, star_name, raw_time, raw_flux, progress
         bls = BoxLeastSquares(rt_clean, rf_clean)
         period_grid = np.linspace(0.5, 50.0, 500)
         bls_results = bls.power(period_grid, 0.1)
-        for p, pw in zip(bls_results.period, bls_results.power):
+        for p, pw in zip(bls_results.period, bls_results.power, strict=True):
             bls_periodogram_data.append({"period": round(float(p), 4), "power": round(float(pw), 4)})
     except Exception as e:
         print(f"⚠️ Could not generate periodogram for {star_name}: {e}")

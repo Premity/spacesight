@@ -14,9 +14,12 @@ jobs:
 
       # Lint blocks merge; formatting is auto-fixed by pre-commit locally, so CI
       # doesn't gate on it (style guide §Enforcement).
+      # Version pinned so CI and local runs (and pre-commit) agree on the ruleset —
+      # keep in sync with .pre-commit-config.yaml.
       - name: Ruff lint
         uses: astral-sh/ruff-action@v3
         with:
+          version: "0.12.3"
           args: check .
 
       - name: Setup Node (for Pyright)
