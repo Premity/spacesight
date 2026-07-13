@@ -31,10 +31,10 @@ train) and **[ml/MODELS.md](ml/MODELS.md)** (the model registry).
 
 ```
 spacesight/
+├── .github/workflows/               CI + GitHub Pages deploy
 ├── spacesight-backend/              FastAPI + PyTorch backend
 │   ├── app/
 │   │   ├── __init__.py
-│   │   ├── main.py                  (legacy single-shot /predict endpoint)
 │   │   ├── model_def.py             InceptionResNet1D architecture
 │   │   └── processor.py             Preprocessing, CNN triage, BLS verification
 │   ├── data/
@@ -55,20 +55,27 @@ spacesight/
 │   │   ├── utils/
 │   │   ├── App.jsx
 │   │   └── main.jsx
-│   ├── .github/workflows/           GitHub Pages deploy
 │   ├── index.html
 │   ├── package.json
 │   ├── tailwind.config.js
 │   └── vite.config.js
 │
-├── docs/
-│   └── parallel-processing.md       Design doc for CPU/GPU pipeline upgrades
+├── ml/                              Training: notebooks + spacesight_ml package
+│   ├── notebooks/                   Research notebooks (exploration)
+│   ├── src/spacesight_ml/           Importable package (stable logic graduates here)
+│   ├── configs/                     Experiment configs
+│   ├── data/                        gitignored — dataset lives on Google Drive
+│   ├── MODELS.md                    Model registry (one row per iteration)
+│   └── README.md                    How to train
+│
+├── docs/                            Design docs, ROADMAP, ADRs — start at docs/README.md
 ├── test_data/                       Sample .npz / .zip files for testing
 │   ├── KIC_6541920.npz
 │   ├── KIC_6850504.npz
 │   ├── KIC_10593626.npz
 │   └── Test_Files.zip               All three .npz files bundled
 ├── CLAUDE.md
+├── CONTEXT.md                       Glossary
 ├── LICENSE
 ├── README.md
 ├── requirements.txt                 Python dependencies (backend)
@@ -154,7 +161,7 @@ python test_processor.py
 
 - `POST /analyze` — accepts a single `.npz` upload, or a `.zip` containing multiple `.npz` files (capped at 20 stars per job). Returns `{ "jobId": "uuid", "totalStars": N }`
 - `GET /status/{jobId}` — `{ stage, stageIndex, progress, done, error, currentStar, currentStarName, totalStars }`
-- `GET /results/{jobId}` — full nested result schema (see [spacesight-frontend/API_REQUIREMENTS.md](spacesight-frontend/API_REQUIREMENTS.md))
+- `GET /results/{jobId}` — full nested result schema (authoritative contract: [docs/kepler-system-design.md](docs/kepler-system-design.md) §4–5)
 
 Stage progression: `start → loading → preprocessing → cnn_inference → bls_analysis → generate_visualizations → done`.
 
@@ -176,7 +183,7 @@ Each `.npz` input must have two arrays: `time` (Kepler BJD timestamps) and `flux
 
 ## Deployment
 
-The frontend deploys automatically to GitHub Pages on every push to `master` via [.github/workflows/deploy.yml](spacesight-frontend/.github/workflows/deploy.yml). The backend is not currently deployed — point the frontend at any reachable `http://...:8000` instance by editing `BASE_URL` in [src/services/api.js](spacesight-frontend/src/services/api.js).
+The frontend deploys automatically to GitHub Pages on every push to `main` via [.github/workflows/deploy.yml](.github/workflows/deploy.yml). The backend is not currently deployed — point the frontend at any reachable `http://...:8000` instance by editing `BASE_URL` in [src/services/api.js](spacesight-frontend/src/services/api.js).
 
 ---
 
@@ -194,4 +201,4 @@ MS Ramaiah Institute of Technology — Capstone Project 2025
 
 ## License
 
-[MIT](LICENSE)
+[GPL-3.0](LICENSE)

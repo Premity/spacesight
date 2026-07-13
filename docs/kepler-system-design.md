@@ -309,10 +309,8 @@ generate_visualizations → done`.
 > (1) backend `STAGE_MAP` (`main.py:98`) — add `cnn_triage`/`cnn_vetting` keys and
 > reindex; (2) frontend label array `STAGES` (`AnalyzePage.jsx:8`) — rename
 > `"CNN Inference"` → `"CNN Triage"`, insert `"CNN Vetting"`; (3) the displayed
-> stage count (7 → 8). `usePipeline.js` needs no change. The dead `app/main.py`
-> (synchronous `/predict`, loads a nonexistent `.keras`) and `API_REQUIREMENTS.md`
-> (documents that dead contract) are stale — delete / update at the real
-> restructure.
+> stage count (7 → 8). `usePipeline.js` needs no change. (The dead `app/main.py`
+> and the stale `API_REQUIREMENTS.md` were deleted at the July 2026 restructure.)
 
 ### 4.2 Job state
 
@@ -570,7 +568,7 @@ checklist-with-dependencies, not a re-sequencing.
 | ch1 label leak (2-channel triage) | F1 | → single-channel triage ([ADR 0003](adr/0003-single-channel-triage.md)) |
 | backend/training detrend mismatch (`wh_lambda` 1e9 vs 1e6) | F2 | → one shared impl, config from checkpoint |
 | hardcoded `cnn_threshold=0.70` | F3 | → star-level threshold in checkpoint |
-| dead `app/main.py` + stale `API_REQUIREMENTS.md` | — | delete/update at restructure |
+| dead `app/main.py` + stale `API_REQUIREMENTS.md` | — | ✅ deleted (2026-07 restructure) |
 | synthetic noise injection in viz | — | remove (§2.5) |
 | throwaway display periodogram | — | use real Search spectrum (§2.5) |
 | global sigma-clip; ambiguous boundary windows | P2, P1 | per-segment MAD clip; drop ambiguous |

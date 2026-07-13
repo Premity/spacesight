@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Lint blocks merge; formatting is auto-fixed by pre-commit locally, so CI
+      # doesn't gate on it (style guide §Enforcement).
+      # Version pinned so CI and local runs (and pre-commit) agree on the ruleset —
+      # keep in sync with .pre-commit-config.yaml.
+      - name: Ruff lint
+        uses: astral-sh/ruff-action@v3
+        with:
+          version: "0.12.3"
+          args: check .
+
+      - name: Setup Node (for Pyright)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Pyright (lenient)
+        run: npx pyright@1.1.403
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: spacesight-frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+          cache-dependency-path: spacesight-frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build

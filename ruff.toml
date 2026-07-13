@@ -1,0 +1,18 @@
+# Python format + lint config — see docs/style-guide.md §Enforcement.
+line-length = 120
+target-version = "py312"
+
+# Notebooks are not policed (style guide); exploration code stays free-form.
+extend-exclude = ["*.ipynb"]
+
+[lint]
+select = [
+  "E", "F",   # pyflakes + pycodestyle errors
+  "B",        # flake8-bugbear (likely bugs)
+  "I",        # isort (import ordering)
+  "UP",       # pyupgrade (modern Python syntax)
+]
+
+[lint.extend-per-file-ignores]
+# FastAPI's dependency-injection idiom uses calls in argument defaults (File(...), Depends(...)).
+"spacesight-backend/main.py" = ["B008"]

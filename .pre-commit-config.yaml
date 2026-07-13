@@ -1,0 +1,18 @@
+# Local auto-fix layer — see docs/style-guide.md §Enforcement.
+# Install once per clone:  uvx pre-commit install   (or pip install pre-commit && pre-commit install)
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.12.3
+    hooks:
+      - id: ruff-format
+      - id: ruff
+        args: [--fix]
+
+  - repo: local
+    hooks:
+      - id: prettier
+        name: prettier (frontend)
+        language: system
+        entry: npx --prefix spacesight-frontend prettier --write
+        files: ^spacesight-frontend/.*\.(js|jsx|css|json|html)$
+        exclude: ^spacesight-frontend/(dist|node_modules)/

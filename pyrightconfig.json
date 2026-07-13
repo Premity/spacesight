@@ -1,0 +1,13 @@
+{
+  "include": ["spacesight-backend", "ml/src"],
+  "exclude": ["**/__pycache__", "**/node_modules", "ml/data"],
+  "typeCheckingMode": "basic",
+  "reportMissingImports": "warning",
+  "reportMissingModuleSource": "none",
+  "reportArgumentType": "warning",
+  "reportAttributeAccessIssue": "warning",
+  "reportCallIssue": "warning",
+  "reportGeneralTypeIssues": "warning",
+  "reportOperatorIssue": "warning",
+  "reportIndexIssue": "warning"
+}

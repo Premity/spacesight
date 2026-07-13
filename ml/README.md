@@ -3,9 +3,9 @@
 Everything related to building and training the exoplanet CNN lives here. The serving
 side (FastAPI backend that *uses* the trained model) lives in `spacesight-backend/`.
 
-**Status (June 2026):** this directory holds the two research notebooks and is currently
-gitignored (research not yet published — the team decides when to start committing it).
-The plans below describe the target state; see
+**Status (July 2026):** the directory is tracked and scaffolded — the two research
+notebooks live in `notebooks/`, and `src/spacesight_ml/` is the (still mostly empty)
+package they graduate into during roadmap R1–R3. See
 [docs/repo-restructure-and-mlops-plan.md](../docs/repo-restructure-and-mlops-plan.md)
 for the migration plan and [docs/ROADMAP.md](../docs/ROADMAP.md) for what gets built in
 what order.
@@ -24,10 +24,10 @@ ml/
 └── README.md              this file
 ```
 
-Today's reality: the two dated notebooks at the top level are the pipeline
+Today's reality: the two dated notebooks in `notebooks/` are the pipeline
 (`Preprocessing + Second Channel` → builds the windowed dataset;
 `Dual-Channel InceptionResNet Model Building` → trains and evaluates). They get ported
-into `src/` during roadmap phase R3.
+into `src/` during roadmap phases R1–R3.
 
 ## Ground rules
 
@@ -38,8 +38,10 @@ into `src/` during roadmap phase R3.
    Any input channel must be constructible at serving time from the light curve alone
    (or from BLS output). See ROADMAP §4b and finding F1 for why this rule exists.
 3. **Notebooks are for exploration.** When a cell stabilizes, it moves into
-   `src/spacesight_ml/` and the notebook imports it. Notebook outputs are stripped
-   before commit (`nbstripout` pre-commit hook) once notebooks are tracked.
+   `src/spacesight_ml/` and the notebook imports it. Notebook **outputs are kept**
+   (figures/metrics are the value of a research notebook — no `nbstripout`); merge
+   conflicts are avoided by editing notebooks linearly, one person at a time
+   (see the [style guide](../docs/style-guide.md) §Notebooks).
 4. **One preprocessing implementation.** Training and the backend must import the same
    detrending/windowing code — never maintain two copies (finding F2).
 

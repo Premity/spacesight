@@ -1,5 +1,5 @@
-import math
 import logging
+import math
 
 import numpy as np
 import pandas as pd
@@ -88,12 +88,14 @@ class ExoplanetProcessor:
             preds = self.model(tensor_data)
             probs = torch.sigmoid(preds).numpy().flatten()
 
-        max_conf     = float(np.max(probs))
+        max_conf = float(np.max(probs))
         is_candidate = max_conf > self.cnn_threshold
 
         logger.info(
             "KIC %s | CNN confidence: %.4f | candidate: %s",
-            kic_id, max_conf, is_candidate,
+            kic_id,
+            max_conf,
+            is_candidate,
         )
 
         # ------------------------------------------------------------------
@@ -105,16 +107,16 @@ class ExoplanetProcessor:
             if progress_callback:
                 progress_callback("done", 100)
             return {
-                "kic_id":           kic_id,
-                "cnn_candidate":    False,
-                "max_confidence":   max_conf,
+                "kic_id": kic_id,
+                "cnn_candidate": False,
+                "max_confidence": max_conf,
                 "windows_analyzed": len(cnn_windows),
                 "planets_detected": 0,
-                "detections":       [],
-                "detrended_flux":   clean_flux_full,
-                "detrended_time":   full_time,
+                "detections": [],
+                "detrended_flux": clean_flux_full,
+                "detrended_time": full_time,
             }
-        
+
         if progress_callback:
             progress_callback("bls_analysis", 60)
 
@@ -126,12 +128,12 @@ class ExoplanetProcessor:
         # Harmonic guard: reject any new detection whose period is within
         # 5% of an already-found period or a simple harmonic of it.
         # ------------------------------------------------------------------
-        found_planets        = []
-        accepted_periods     = []   # periods of confirmed detections
-        accepted_period_info = []   # (period, transit_time, duration) tuples
-        current_segs         = [(t.copy(), f.copy()) for t, f in segments]
-        max_iterations       = 10
-        max_harmonic_skips   = 5    # abort if BLS keeps returning harmonics
+        found_planets = []
+        accepted_periods = []  # periods of confirmed detections
+        accepted_period_info = []  # (period, transit_time, duration) tuples
+        current_segs = [(t.copy(), f.copy()) for t, f in segments]
+        max_iterations = 10
+        max_harmonic_skips = 5  # abort if BLS keeps returning harmonics
 
         harmonic_skips = 0
 
@@ -143,7 +145,8 @@ class ExoplanetProcessor:
             if planet_result["calculated"]["bls_power"] < self.bls_threshold:
                 logger.info(
                     "KIC %s | BLS iteration %d: power %.2f below threshold %.1f - stopping.",
-                    kic_id, i + 1,
+                    kic_id,
+                    i + 1,
                     planet_result["calculated"]["bls_power"],
                     self.bls_threshold,
                 )
@@ -156,7 +159,7 @@ class ExoplanetProcessor:
             # period. Ratios checked: 1x (duplicate), 2x, 0.5x, 3x, 1/3x.
             is_harmonic = False
             for prev_p in accepted_periods:
-                for ratio in [1.0, 2.0, 0.5, 3.0, 1/3]:
+                for ratio in [1.0, 2.0, 0.5, 3.0, 1 / 3]:
                     if abs(new_p - prev_p * ratio) / prev_p < 0.05:
                         is_harmonic = True
                         break
@@ -168,7 +171,11 @@ class ExoplanetProcessor:
                 logger.info(
                     "KIC %s | Iteration %d: period %.4f d is a harmonic/duplicate "
                     "of a previous detection — masking and retrying (%d/%d).",
-                    kic_id, i + 1, new_p, harmonic_skips, max_harmonic_skips,
+                    kic_id,
+                    i + 1,
+                    new_p,
+                    harmonic_skips,
+                    max_harmonic_skips,
                 )
                 if harmonic_skips >= max_harmonic_skips:
                     logger.info(
@@ -183,23 +190,23 @@ class ExoplanetProcessor:
                 # residual untouched so BLS keeps rediscovering it.
                 # Instead, find which accepted period this is a harmonic of and
                 # use that period's known transit time for the mask.
-                p   = planet_result["calculated"]["period"]
-                t0  = planet_result["calculated"]["transit_time"]
+                p = planet_result["calculated"]["period"]
+                t0 = planet_result["calculated"]["transit_time"]
                 dur = planet_result["calculated"]["duration"]
                 # Find the parent accepted period
                 for prev_p, prev_t0, prev_dur in accepted_period_info:
-                    for ratio in [1.0, 2.0, 0.5, 3.0, 1/3]:
+                    for ratio in [1.0, 2.0, 0.5, 3.0, 1 / 3]:
                         if abs(new_p - prev_p * ratio) / prev_p < 0.05:
                             # Mask at the parent's period and t0 with generous buffer
-                            p   = prev_p
-                            t0  = prev_t0
+                            p = prev_p
+                            t0 = prev_t0
                             dur = prev_dur
                             break
                 masked_segs = []
                 for seg_time, seg_flux in current_segs:
-                    folded     = (seg_time - t0 + 0.5 * p) % p - 0.5 * p
+                    folded = (seg_time - t0 + 0.5 * p) % p - 0.5 * p
                     in_transit = np.abs(folded) < (dur * 2.5 / 2.0)
-                    seg_flux   = seg_flux.copy()
+                    seg_flux = seg_flux.copy()
                     seg_flux[in_transit] = 1.0
                     masked_segs.append((seg_time, seg_flux))
                 current_segs = masked_segs
@@ -210,30 +217,33 @@ class ExoplanetProcessor:
             planet_result["planet_number"] = i + 1
             found_planets.append(planet_result)
             accepted_periods.append(new_p)
-            accepted_period_info.append((
-                new_p,
-                planet_result["calculated"]["transit_time"],
-                planet_result["calculated"]["duration"],
-            ))
+            accepted_period_info.append(
+                (
+                    new_p,
+                    planet_result["calculated"]["transit_time"],
+                    planet_result["calculated"]["duration"],
+                )
+            )
 
             logger.info(
                 "KIC %s | Planet %d detected - period: %.4f d, radius: %.2f R_earth, power: %.2f",
-                kic_id, i + 1,
+                kic_id,
+                i + 1,
                 planet_result["calculated"]["period"],
                 planet_result["calculated"]["radius"],
                 planet_result["calculated"]["bls_power"],
             )
 
             # Pre-whitening: mask this planet's transits in every segment.
-            p   = planet_result["calculated"]["period"]
-            t0  = planet_result["calculated"]["transit_time"]
+            p = planet_result["calculated"]["period"]
+            t0 = planet_result["calculated"]["transit_time"]
             dur = planet_result["calculated"]["duration"]
 
             masked_segs = []
             for seg_time, seg_flux in current_segs:
-                folded     = (seg_time - t0 + 0.5 * p) % p - 0.5 * p
+                folded = (seg_time - t0 + 0.5 * p) % p - 0.5 * p
                 in_transit = np.abs(folded) < (dur * 1.5 / 2.0)
-                seg_flux   = seg_flux.copy()
+                seg_flux = seg_flux.copy()
                 seg_flux[in_transit] = 1.0
                 masked_segs.append((seg_time, seg_flux))
             current_segs = masked_segs
@@ -242,14 +252,14 @@ class ExoplanetProcessor:
         # FINAL PAYLOAD
         # ------------------------------------------------------------------
         return {
-            "kic_id":           kic_id,
-            "cnn_candidate":    True,
-            "max_confidence":   max_conf,
+            "kic_id": kic_id,
+            "cnn_candidate": True,
+            "max_confidence": max_conf,
             "windows_analyzed": len(cnn_windows),
             "planets_detected": len(found_planets),
-            "detections":       found_planets,
-            "detrended_flux":   clean_flux_full,
-            "detrended_time":   full_time,
+            "detections": found_planets,
+            "detrended_flux": clean_flux_full,
+            "detrended_time": full_time,
         }
 
     # =========================================================================
@@ -282,13 +292,11 @@ class ExoplanetProcessor:
         flux_segments = np.split(raw_flux, gaps)
 
         clean_flux_full = np.array([])  # full array for CNN windowing
-        segments        = []            # per-segment pairs for BLS
+        segments = []  # per-segment pairs for BLS
 
-        for t_seg, f_seg in zip(time_segments, flux_segments):
+        for t_seg, f_seg in zip(time_segments, flux_segments, strict=True):
             if len(f_seg) < 100:
-                clean_flux_full = np.concatenate(
-                    [clean_flux_full, np.full_like(f_seg, np.nan)]
-                )
+                clean_flux_full = np.concatenate([clean_flux_full, np.full_like(f_seg, np.nan)])
                 continue
 
             detrended = self._detrend_segment(t_seg, f_seg)
@@ -315,8 +323,8 @@ class ExoplanetProcessor:
         weighted asymmetric iteration (airPLS-style) is used to anchor the
         baseline to the out-of-transit continuum rather than chasing dips.
         """
-        median_flux  = np.nanmedian(flux)
-        std_flux     = np.nanstd(flux)
+        median_flux = np.nanmedian(flux)
+        std_flux = np.nanstd(flux)
         outlier_mask = np.abs(flux - median_flux) > (self.config["sigma_clip"] * std_flux)
 
         flux_clean = np.copy(flux).astype(np.float64)
@@ -334,11 +342,11 @@ class ExoplanetProcessor:
             logger.debug("Segment pre-normalized (median=%.4f) — skipping WH.", median_flux)
             return np.where(np.isnan(flux_interp), 1.0, flux_interp)
 
-        m   = len(flux_interp)
+        m = len(flux_interp)
         lam = float(self.config["wh_lambda"])
-        D   = sp.diags([1.0, -2.0, 1.0], [0, 1, 2], shape=(m - 2, m))
+        D = sp.diags([1.0, -2.0, 1.0], [0, 1, 2], shape=(m - 2, m))
         DDT = D.T.dot(D)
-        E   = sp.eye(m, format="csc")
+        E = sp.eye(m, format="csc")
 
         # Initial standard WH solve
         baseline = spsolve(E + lam * DDT, flux_interp)
@@ -354,13 +362,13 @@ class ExoplanetProcessor:
         if use_asymmetric:
             n_iter = self.config.get("wh_asymmetric_iters", 10)
             for _ in range(n_iter):
-                weights  = np.where(flux_interp >= baseline, 1.0, 1e-6)
-                W        = sp.diags(weights, format="csc")
+                weights = np.where(flux_interp >= baseline, 1.0, 1e-6)
+                W = sp.diags(weights, format="csc")
                 baseline = spsolve(W + lam * DDT, W.dot(flux_interp))
 
         baseline = np.where(np.abs(baseline) < 1e-10, 1.0, baseline)
 
-        detrended  = flux_interp / baseline
+        detrended = flux_interp / baseline
         seg_median = np.nanmedian(detrended)
         if seg_median == 0:
             seg_median = 1.0
@@ -378,32 +386,30 @@ class ExoplanetProcessor:
                     catalog period is available for this star).
         """
         window_size = self.config["window_length"]
-        stride      = self.config["stride"]
-        min_valid   = self.config.get("min_valid_frac", 0.90)
-        fill_val    = self.config.get("secondary_fill_value", 1.0)
-        buf_frac    = self.config.get("transit_buffer_frac", 0.5)
-        half_w      = window_size // 2
+        stride = self.config["stride"]
+        min_valid = self.config.get("min_valid_frac", 0.90)
+        fill_val = self.config.get("secondary_fill_value", 1.0)
+        buf_frac = self.config.get("transit_buffer_frac", 0.5)
+        half_w = window_size // 2
 
-        ttimes, tdurs, tperiods = self._get_known_transits(
-            kic_id, time.min(), time.max()
-        )
+        ttimes, tdurs, tperiods = self._get_known_transits(kic_id, time.min(), time.max())
 
         windows, valid_time_indices = [], []
 
         for start_idx in range(0, len(flux) - window_size + 1, stride):
             segment = flux[start_idx : start_idx + window_size]
-            wtime   = time[start_idx : start_idx + window_size]
+            wtime = time[start_idx : start_idx + window_size]
 
             if (np.sum(~np.isnan(segment)) / window_size) < min_valid:
                 continue
 
-            window_median     = np.nanmedian(segment)
+            window_median = np.nanmedian(segment)
             normalized_window = segment / window_median
             normalized_window = np.nan_to_num(normalized_window, nan=1.0)
 
             best_period = None
-            tlo, thi    = wtime[0], wtime[-1]
-            for tm, dur, P in zip(ttimes, tdurs, tperiods):
+            tlo, thi = wtime[0], wtime[-1]
+            for tm, dur, P in zip(ttimes, tdurs, tperiods, strict=True):
                 buffer = buf_frac * dur
                 if tlo - buffer < tm < thi + buffer:
                     best_period = P
@@ -412,8 +418,12 @@ class ExoplanetProcessor:
             t_window_center = float(wtime[half_w])
             if best_period is not None:
                 sec_channel = self._extract_secondary_window(
-                    time, flux, t_window_center, best_period,
-                    half_w=half_w, fill_value=fill_val,
+                    time,
+                    flux,
+                    t_window_center,
+                    best_period,
+                    half_w=half_w,
+                    fill_value=fill_val,
                 )
             else:
                 sec_channel = np.full(window_size, fill_val, dtype=np.float32)
@@ -425,21 +435,19 @@ class ExoplanetProcessor:
         if not windows:
             return [], np.array([]), np.array([])
 
-        cnn_matrix     = np.stack(windows)
+        cnn_matrix = np.stack(windows)
         unique_indices = sorted(set(valid_time_indices))
 
         return cnn_matrix, time[unique_indices], flux[unique_indices]
 
-    def _extract_secondary_window(
-        self, time_full, flux_full, t_center, period, half_w=100, fill_value=1.0
-    ):
+    def _extract_secondary_window(self, time_full, flux_full, t_center, period, half_w=100, fill_value=1.0):
         """Extract the 201-cadence window centred on the secondary eclipse (phase 0.5)."""
-        W           = 2 * half_w + 1
+        W = 2 * half_w + 1
         t_secondary = t_center + period / 2.0
 
         idx_center = int(np.argmin(np.abs(time_full - t_secondary)))
-        i_start    = idx_center - half_w
-        i_end      = idx_center + half_w + 1
+        i_start = idx_center - half_w
+        i_end = idx_center + half_w + 1
 
         if i_start < 0 or i_end > len(flux_full):
             return np.full(W, fill_value, dtype=np.float32)
@@ -451,7 +459,7 @@ class ExoplanetProcessor:
 
         if np.isnan(sec).any():
             nans = np.isnan(sec)
-            idx  = np.arange(W)
+            idx = np.arange(W)
             sec[nans] = np.interp(idx[nans], idx[~nans], sec[~nans])
 
         wmed = np.median(sec)
@@ -478,10 +486,10 @@ class ExoplanetProcessor:
         all_times, all_durations, all_periods = [], [], []
 
         for _, row in kois.iterrows():
-            P       = float(row["koi_period"])
-            t0      = float(row["koi_time0bk"])
+            P = float(row["koi_period"])
+            t0 = float(row["koi_time0bk"])
             dur_hrs = row["koi_duration"]
-            dur     = float(dur_hrs) / 24.0 if not pd.isna(dur_hrs) else 0.2
+            dur = float(dur_hrs) / 24.0 if not pd.isna(dur_hrs) else 0.2
 
             if P <= 0:
                 continue
@@ -531,21 +539,17 @@ class ExoplanetProcessor:
         # (after BLS) so each planet gets its own catalog entry, not always
         # the first row.
         # ------------------------------------------------------------------
-        s_rad        = 1.0
-        disposition  = "UNKNOWN"
-        koi_rows     = pd.DataFrame()   # all KOIs for this star
+        s_rad = 1.0
+        disposition = "UNKNOWN"
+        koi_rows = pd.DataFrame()  # all KOIs for this star
 
         try:
             numeric_id = int("".join(filter(str.isdigit, str(kic_id))))
-            all_rows   = self.catalog[self.catalog["kepid"] == numeric_id]
+            all_rows = self.catalog[self.catalog["kepid"] == numeric_id]
 
             if not all_rows.empty:
                 # Stellar radius: use first row (same star for all KOIs)
-                s_rad = (
-                    float(all_rows["koi_srad"].values[0])
-                    if not pd.isna(all_rows["koi_srad"].values[0])
-                    else 1.0
-                )
+                s_rad = float(all_rows["koi_srad"].values[0]) if not pd.isna(all_rows["koi_srad"].values[0]) else 1.0
                 koi_rows = all_rows  # save all KOIs for period-matching later
 
         except (ValueError, TypeError):
@@ -580,27 +584,27 @@ class ExoplanetProcessor:
         # quarters don't dominate the period selection, but we track the
         # raw depth separately via a weighted accumulator.
         # ------------------------------------------------------------------
-        combined_power    = np.zeros(len(period_grid))
+        combined_power = np.zeros(len(period_grid))
         combined_duration = np.zeros(len(period_grid))
-        combined_t0       = np.zeros(len(period_grid))
+        combined_t0 = np.zeros(len(period_grid))
         # depth accumulator: sum of (depth * weight) / sum of weights
-        depth_num         = np.zeros(len(period_grid))
-        depth_den         = np.zeros(len(period_grid))
-        n_contributing    = 0
+        depth_num = np.zeros(len(period_grid))
+        depth_den = np.zeros(len(period_grid))
+        n_contributing = 0
 
         for seg_time, seg_flux in segments:
             if (seg_time.max() - seg_time.min()) < 1.0:
                 continue
 
-            seg_baseline   = seg_time.max() - seg_time.min()
+            seg_baseline = seg_time.max() - seg_time.min()
             seg_max_period = seg_baseline / 2.0
-            seg_pg         = period_grid[period_grid <= seg_max_period]
+            seg_pg = period_grid[period_grid <= seg_max_period]
 
             if len(seg_pg) < 10:
                 continue
 
             try:
-                bls     = BoxLeastSquares(seg_time, seg_flux)
+                bls = BoxLeastSquares(seg_time, seg_flux)
                 results = bls.power(seg_pg, durations)
 
                 seg_power = np.array(results.power)
@@ -614,9 +618,9 @@ class ExoplanetProcessor:
                     seg_norm = seg_power
 
                 n_seg = len(seg_pg)
-                combined_power[:n_seg]    += seg_norm
-                combined_duration[:n_seg]  = np.array(results.duration)
-                combined_t0[:n_seg]        = np.array(results.transit_time)
+                combined_power[:n_seg] += seg_norm
+                combined_duration[:n_seg] = np.array(results.duration)
+                combined_t0[:n_seg] = np.array(results.transit_time)
                 # Weighted depth: weight by normalised power so high-SNR
                 # segments dominate the depth estimate
                 depth_num[:n_seg] += seg_norm * seg_depth
@@ -630,30 +634,27 @@ class ExoplanetProcessor:
         if n_contributing == 0:
             longest = max(segments, key=lambda s: len(s[0]))
             seg_time, seg_flux = longest
-            bls     = BoxLeastSquares(seg_time, seg_flux)
+            bls = BoxLeastSquares(seg_time, seg_flux)
             results = bls.power(period_grid, durations)
-            best    = int(np.argmax(results.power))
-            max_power          = float(results.power[best])
-            calc_period        = float(results.period[best])
-            calc_duration      = float(results.duration[best])
-            calc_transit_time  = float(results.transit_time[best])
-            combined_depth_val = float(results.depth[best])
+            best = int(np.argmax(results.power))
+            max_power = float(results.power[best])
+            calc_period = float(results.period[best])
+            calc_duration = float(results.duration[best])
+            calc_transit_time = float(results.transit_time[best])
         else:
-            best              = int(np.argmax(combined_power))
-            max_power         = float(combined_power[best])
-            calc_period       = float(period_grid[best])
-            calc_duration     = float(combined_duration[best]) if combined_duration[best] > 0 else 0.1
+            best = int(np.argmax(combined_power))
+            max_power = float(combined_power[best])
+            calc_period = float(period_grid[best])
+            calc_duration = float(combined_duration[best]) if combined_duration[best] > 0 else 0.1
             calc_transit_time = float(combined_t0[best])
-            # Weighted-average depth in physical flux units
-            combined_depth_val = (
-                float(depth_num[best] / depth_den[best])
-                if depth_den[best] > 0 else 0.0
-            )
 
         logger.debug(
-            "KIC %s | BLS best: power=%.2f  period=%.4f d  duration=%.4f d  "
-            "(%d segments contributed)",
-            kic_id, max_power, calc_period, calc_duration, n_contributing,
+            "KIC %s | BLS best: power=%.2f  period=%.4f d  duration=%.4f d  (%d segments contributed)",
+            kic_id,
+            max_power,
+            calc_period,
+            calc_duration,
+            n_contributing,
         )
 
         # ------------------------------------------------------------------
@@ -676,80 +677,80 @@ class ExoplanetProcessor:
         #     So anchor the scan around the coarse BLS t0 with a fine window.
         # ------------------------------------------------------------------
 
-        all_times  = np.concatenate([t for t, _ in segments])
+        all_times = np.concatenate([t for t, _ in segments])
         all_fluxes = np.concatenate([f for _, f in segments])
         t_global_min = float(all_times.min())
 
         # Step 1: coarse scan across the full period to find the right phase.
         # Use 500 steps so step size < half the shortest transit duration.
-        n_coarse   = 500
-        coarse_t0s = np.linspace(t_global_min,
-                                  t_global_min + calc_period,
-                                  n_coarse, endpoint=False)
+        n_coarse = 500
+        coarse_t0s = np.linspace(t_global_min, t_global_min + calc_period, n_coarse, endpoint=False)
 
         # For coarse scan use the median duration as window
-        coarse_dur  = 0.20   # ~5 hours, middle of Kepler-11 range
+        coarse_dur = 0.20  # ~5 hours, middle of Kepler-11 range
         half_coarse = coarse_dur / 2.0
 
         coarse_depths = np.zeros(n_coarse)
         for i, t0c in enumerate(coarse_t0s):
-            folded     = (all_times - t0c + 0.5 * calc_period) % calc_period - 0.5 * calc_period
+            folded = (all_times - t0c + 0.5 * calc_period) % calc_period - 0.5 * calc_period
             in_transit = np.abs(folded) < half_coarse
             if in_transit.sum() >= 3:
                 coarse_depths[i] = max(0.0, 1.0 - float(np.nanmedian(all_fluxes[in_transit])))
 
         # Step 2: fine scan around the top-3 coarse candidates
-        top3_idx    = np.argsort(coarse_depths)[-3:][::-1]
-        dur_grid    = np.linspace(0.05, 0.50, 30)
+        top3_idx = np.argsort(coarse_depths)[-3:][::-1]
+        dur_grid = np.linspace(0.05, 0.50, 30)
 
-        best_depth  = 0.0
-        best_t0_abs = coarse_t0s[top3_idx[0]]   # absolute time fallback
-        best_dur    = coarse_dur
+        best_depth = 0.0
+        best_t0_abs = coarse_t0s[top3_idx[0]]  # absolute time fallback
+        best_dur = coarse_dur
 
         for ci in top3_idx:
             centre_t0 = coarse_t0s[ci]
             # Fine window: ±1 coarse step either side
-            fine_half  = calc_period / n_coarse
-            fine_t0s   = np.linspace(centre_t0 - fine_half,
-                                      centre_t0 + fine_half, 80)
+            fine_half = calc_period / n_coarse
+            fine_t0s = np.linspace(centre_t0 - fine_half, centre_t0 + fine_half, 80)
             for dur in dur_grid:
                 half_dur = dur / 2.0
                 for t0f in fine_t0s:
-                    folded     = (all_times - t0f + 0.5 * calc_period) % calc_period - 0.5 * calc_period
+                    folded = (all_times - t0f + 0.5 * calc_period) % calc_period - 0.5 * calc_period
                     in_transit = np.abs(folded) < half_dur
-                    n_in       = int(in_transit.sum())
+                    n_in = int(in_transit.sum())
                     # Require at least 2 cadences per expected transit
                     # (cadence ~0.02d, so min cadences ~ dur/0.02 * 2 transits)
                     min_cadences = max(3, int(dur / 0.021))
                     if n_in < min_cadences:
                         continue
                     med_in = float(np.nanmedian(all_fluxes[in_transit]))
-                    depth  = max(0.0, 1.0 - med_in)
+                    depth = max(0.0, 1.0 - med_in)
                     if depth > best_depth:
-                        best_depth  = depth
-                        best_t0_abs = t0f     # absolute BJD time
-                        best_dur    = dur
+                        best_depth = depth
+                        best_t0_abs = t0f  # absolute BJD time
+                        best_dur = dur
 
         # Step 3: baseline-corrected depth at best t0
-        folded_best  = (all_times - best_t0_abs + 0.5 * calc_period) % calc_period - 0.5 * calc_period
-        oot_mask     = np.abs(folded_best) > (best_dur * 3.0)
+        folded_best = (all_times - best_t0_abs + 0.5 * calc_period) % calc_period - 0.5 * calc_period
+        oot_mask = np.abs(folded_best) > (best_dur * 3.0)
         baseline_med = float(np.nanmedian(all_fluxes[oot_mask])) if oot_mask.sum() > 10 else 1.0
-        in_mask      = np.abs(folded_best) < (best_dur / 2.0)
+        in_mask = np.abs(folded_best) < (best_dur / 2.0)
         if in_mask.sum() >= 3:
-            in_med     = float(np.nanmedian(all_fluxes[in_mask]))
+            in_med = float(np.nanmedian(all_fluxes[in_mask]))
             calc_depth = max(0.0, baseline_med - in_med)
         else:
             calc_depth = best_depth
 
         # best_t0_abs is an absolute BJD — safe to use directly in masking
         calc_transit_time = best_t0_abs
-        calc_duration     = best_dur
+        calc_duration = best_dur
 
         logger.debug(
-            "KIC %s | Phase-scan depth: t0=%.4f d (abs)  dur=%.4f d  "
-            "depth=%.6f (%.0f ppm)  baseline=%.6f",
-            kic_id, calc_transit_time, calc_duration,
-            calc_depth, calc_depth * 1e6, baseline_med,
+            "KIC %s | Phase-scan depth: t0=%.4f d (abs)  dur=%.4f d  depth=%.6f (%.0f ppm)  baseline=%.6f",
+            kic_id,
+            calc_transit_time,
+            calc_duration,
+            calc_depth,
+            calc_depth * 1e6,
+            baseline_med,
         )
 
         # ------------------------------------------------------------------
@@ -757,7 +758,7 @@ class ExoplanetProcessor:
         # ------------------------------------------------------------------
         limb_darkening_correction = 1.15
         radius_ratio = math.sqrt(max(0.0, calc_depth))
-        p_rad_earth  = (s_rad * 109.2) * radius_ratio * limb_darkening_correction
+        p_rad_earth = (s_rad * 109.2) * radius_ratio * limb_darkening_correction
 
         # ------------------------------------------------------------------
         # 7. CATALOG TRUTH MATCH
@@ -777,7 +778,7 @@ class ExoplanetProcessor:
                     continue
                 koi_p = float(row["koi_period"])
                 # Check direct period match and simple harmonics (0.5x, 2x, 3x, 1/3x)
-                for ratio in [1.0, 2.0, 0.5, 3.0, 1/3]:
+                for ratio in [1.0, 2.0, 0.5, 3.0, 1 / 3]:
                     err = abs(calc_period - koi_p * ratio) / koi_p
                     if err < best_match_err:
                         best_match_err = err
@@ -786,9 +787,9 @@ class ExoplanetProcessor:
             # Accept the match only if within 10% of a catalog period
             if best_match_idx is not None and best_match_err < 0.10:
                 row = koi_rows.loc[best_match_idx]
-                nasa_period  = float(row["koi_period"]) if not pd.isna(row["koi_period"]) else None
-                nasa_radius  = float(row["koi_prad"])   if not pd.isna(row["koi_prad"])   else None
-                disposition  = str(row["koi_disposition"])
+                nasa_period = float(row["koi_period"]) if not pd.isna(row["koi_period"]) else None
+                nasa_radius = float(row["koi_prad"]) if not pd.isna(row["koi_prad"]) else None
+                disposition = str(row["koi_disposition"])
 
         # ------------------------------------------------------------------
         # 8. PHYSICAL CLASSIFICATION
@@ -808,10 +809,10 @@ class ExoplanetProcessor:
         return {
             "status": status,
             "calculated": {
-                "period":       calc_period,
-                "radius":       p_rad_earth,
-                "bls_power":    max_power,
-                "duration":     calc_duration,
+                "period": calc_period,
+                "radius": p_rad_earth,
+                "bls_power": max_power,
+                "duration": calc_duration,
                 "transit_time": calc_transit_time,
             },
             "catalog_truth": {

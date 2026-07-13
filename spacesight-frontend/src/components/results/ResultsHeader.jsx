@@ -1,5 +1,5 @@
-import React from 'react';
-import ExportButton from './ExportButton';
+import React from "react";
+import ExportButton from "./ExportButton";
 
 export default function ResultsHeader({ results }) {
   return (
@@ -10,7 +10,7 @@ export default function ResultsHeader({ results }) {
             Analysis Complete
           </h1>
           <p className="text-space-teal font-mono tracking-widest text-lg uppercase bg-space-teal/10 inline-block px-4 py-1 rounded-full border border-space-teal/20">
-            {results.type === 'multi' ? `${results.totalStars} Targets Surveyed` : 'Single Target Analysis'}
+            {results.type === "multi" ? `${results.totalStars} Targets Surveyed` : "Single Target Analysis"}
           </p>
         </div>
         <ExportButton results={results} />

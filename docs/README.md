@@ -105,7 +105,6 @@ so nothing is orphaned:
 | [`../ml/README.md`](../ml/README.md) | `ml/` | How to train: workflow, ground rules, archiving model iterations. |
 | [`../ml/MODELS.md`](../ml/MODELS.md) | `ml/` | The model registry (one row per iteration — the model version axis). |
 | `.gitmessage` / `.github/PULL_REQUEST_TEMPLATE.md` | repo root / `.github/` | Commit + PR templates (conventions in the [restructure plan](repo-restructure-and-mlops-plan.md)). |
-| `spacesight-frontend/API_REQUIREMENTS.md` | frontend | **Retired** — the API contract now lives in [kepler-system-design.md](kepler-system-design.md) §4–5. Slated for deletion. |
 
 Rule of thumb: **planning/design docs live in `docs/`; a readme lives next to the
 thing it documents** (root = the repo, `ml/` = training). This file is the hub that

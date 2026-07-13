@@ -3,10 +3,14 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches:
-      - master
+      - main
 
 permissions:
   contents: write
+
+defaults:
+  run:
+    working-directory: spacesight-frontend
 
 jobs:
   deploy:
@@ -20,6 +24,7 @@ jobs:
         with:
           node-version: 24
           cache: 'npm'
+          cache-dependency-path: spacesight-frontend/package-lock.json
 
       - name: Install dependencies
         run: npm install
@@ -31,4 +36,4 @@ jobs:
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
+          publish_dir: ./spacesight-frontend/dist
