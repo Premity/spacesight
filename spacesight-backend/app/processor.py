@@ -103,9 +103,10 @@ class ExoplanetProcessor:
         # Non-candidates exit here. BLS never runs for them — this is the
         # core cost-saving step of the pipeline.
         # ------------------------------------------------------------------
+        # Rejected stars skip straight to visualization — the caller owns the
+        # "done" transition, so no stage callback here (a premature "done" would
+        # make the job's stage regress when visualizations start).
         if not is_candidate:
-            if progress_callback:
-                progress_callback("done", 100)
             return {
                 "kic_id": kic_id,
                 "cnn_candidate": False,

@@ -3,8 +3,19 @@ import { createPortal } from "react-dom";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
 import InfoTooltip from "../ui/InfoTooltip";
 
+function ChartEmptyState({ message }) {
+  return (
+    <div className="w-full h-full flex items-center justify-center">
+      <span className="text-space-text/40 font-mono text-sm uppercase tracking-widest bg-space-surface/80 px-4 py-2 rounded-full border border-white/5">
+        {message}
+      </span>
+    </div>
+  );
+}
+
 export default function StarCharts({ star }) {
-  const fluxValues = star.lightCurve.map((d) => d.flux);
+  const hasLightCurve = star.lightCurve && star.lightCurve.length > 0;
+  const fluxValues = hasLightCurve ? star.lightCurve.map((d) => d.flux) : [0, 1];
   const minFlux = Math.min(...fluxValues);
   const maxFlux = Math.max(...fluxValues);
   const fluxPadding = (maxFlux - minFlux) * 0.1;
@@ -16,80 +27,88 @@ export default function StarCharts({ star }) {
         title="Detrended Normalized Flux Timeline"
         tooltip="The star's brightness over time after removing long-term trends. Dips below 1.0 indicate a planet passing in front of the star (a transit). The depth of the dip relates to planet size."
       >
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={star.lightCurve} margin={{ top: 20, right: 10, left: -20, bottom: 20 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
-            <XAxis dataKey="time" tick={false} axisLine={false} tickLine={false} />
-            <YAxis
-              domain={fluxDomain}
-              tick={{ fill: "#ffffff50", fontSize: 10 }}
-              tickLine={false}
-              axisLine={false}
-              allowDataOverflow
-            />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "#0d0d1a",
-                border: "1px solid #7c3aed",
-                color: "#fff",
-                borderRadius: "12px",
-                boxShadow: "0 0 20px rgba(124,58,237,0.3)",
-              }}
-              labelFormatter={() => "Observation Timestamp"}
-              formatter={(val) => [val.toFixed(6), "Normalized Flux"]}
-              cursor={{ stroke: "#ffffff15", strokeWidth: 2 }}
-            />
-            <Line
-              type="linear"
-              dataKey="flux"
-              stroke="#7c3aed"
-              dot={false}
-              strokeWidth={0.8}
-              isAnimationActive={false}
-              activeDot={{ r: 6, fill: "#7c3aed", stroke: "#0d0d1a", strokeWidth: 2 }}
-            />
-          </LineChart>
-        </ResponsiveContainer>
+        {!hasLightCurve ? (
+          <ChartEmptyState message="No light curve data" />
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={star.lightCurve} margin={{ top: 20, right: 10, left: -20, bottom: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
+              <XAxis dataKey="time" tick={false} axisLine={false} tickLine={false} />
+              <YAxis
+                domain={fluxDomain}
+                tick={{ fill: "#ffffff50", fontSize: 10 }}
+                tickLine={false}
+                axisLine={false}
+                allowDataOverflow
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "#0d0d1a",
+                  border: "1px solid #7c3aed",
+                  color: "#fff",
+                  borderRadius: "12px",
+                  boxShadow: "0 0 20px rgba(124,58,237,0.3)",
+                }}
+                labelFormatter={() => "Observation Timestamp"}
+                formatter={(val) => [val.toFixed(6), "Normalized Flux"]}
+                cursor={{ stroke: "#ffffff15", strokeWidth: 2 }}
+              />
+              <Line
+                type="linear"
+                dataKey="flux"
+                stroke="#7c3aed"
+                dot={false}
+                strokeWidth={0.8}
+                isAnimationActive={false}
+                activeDot={{ r: 6, fill: "#7c3aed", stroke: "#0d0d1a", strokeWidth: 2 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        )}
       </DetailChartCard>
 
       <DetailChartCard
         title="BLS Periodogram Power Spectrum"
         tooltip="Box Least Squares (BLS) periodogram: tests thousands of candidate orbital periods and scores how well each one fits a transit pattern. Peaks indicate likely orbital periods — the tallest peak is what the pipeline selected as the best candidate."
       >
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={star.blsPeriodogram} margin={{ top: 20, right: 10, left: -20, bottom: 20 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
-            <XAxis
-              dataKey="period"
-              tick={{ fill: "#ffffff50", fontSize: 10 }}
-              tickLine={false}
-              axisLine={false}
-              tickCount={8}
-            />
-            <YAxis tick={{ fill: "#ffffff50", fontSize: 10 }} tickLine={false} axisLine={false} />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "#0d0d1a",
-                border: "1px solid #06b6d4",
-                color: "#fff",
-                borderRadius: "12px",
-                boxShadow: "0 0 20px rgba(6,182,212,0.3)",
-              }}
-              labelFormatter={(period) => `Period: ${period}d`}
-              formatter={(val) => [val.toFixed(3), "Power Score"]}
-              cursor={{ stroke: "#ffffff15", strokeWidth: 2 }}
-            />
-            <Area
-              type="monotone"
-              dataKey="power"
-              stroke="#06b6d4"
-              fill="#06b6d4"
-              fillOpacity={0.15}
-              strokeWidth={2}
-              activeDot={{ r: 6, fill: "#06b6d4", stroke: "#0d0d1a", strokeWidth: 2 }}
-            />
-          </AreaChart>
-        </ResponsiveContainer>
+        {!(star.blsPeriodogram && star.blsPeriodogram.length > 0) ? (
+          <ChartEmptyState message="No periodogram data" />
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={star.blsPeriodogram} margin={{ top: 20, right: 10, left: -20, bottom: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
+              <XAxis
+                dataKey="period"
+                tick={{ fill: "#ffffff50", fontSize: 10 }}
+                tickLine={false}
+                axisLine={false}
+                tickCount={8}
+              />
+              <YAxis tick={{ fill: "#ffffff50", fontSize: 10 }} tickLine={false} axisLine={false} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "#0d0d1a",
+                  border: "1px solid #06b6d4",
+                  color: "#fff",
+                  borderRadius: "12px",
+                  boxShadow: "0 0 20px rgba(6,182,212,0.3)",
+                }}
+                labelFormatter={(period) => `Period: ${period}d`}
+                formatter={(val) => [val.toFixed(3), "Power Score"]}
+                cursor={{ stroke: "#ffffff15", strokeWidth: 2 }}
+              />
+              <Area
+                type="monotone"
+                dataKey="power"
+                stroke="#06b6d4"
+                fill="#06b6d4"
+                fillOpacity={0.15}
+                strokeWidth={2}
+                activeDot={{ r: 6, fill: "#06b6d4", stroke: "#0d0d1a", strokeWidth: 2 }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        )}
       </DetailChartCard>
 
       <DetailChartCard
